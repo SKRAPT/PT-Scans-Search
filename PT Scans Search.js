@@ -220,8 +220,7 @@ function init() {
       providerPromise = null;
       status.set("Cache limpa");
     });
-
-    panel.setContent(() => `
+        panel.setContent(() => `
 <!DOCTYPE html>
 <html lang="pt">
 <head>
@@ -324,12 +323,18 @@ function init() {
       box-shadow: var(--shadow);
       backdrop-filter: blur(22px);
       -webkit-backdrop-filter: blur(22px);
-      animation: fadeUp .35s ease;
+      animation: fadeUp .35s ease, breathe 7s ease-in-out infinite;
+      transform-origin: center;
     }
 
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(10px) scale(.988); }
       to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes breathe {
+      0%,100% { box-shadow: 0 18px 50px rgba(0,0,0,.38), 0 0 0 rgba(94,162,255,0); }
+      50% { box-shadow: 0 22px 60px rgba(0,0,0,.44), 0 0 28px rgba(94,162,255,.08); }
     }
 
     .shine {
@@ -374,6 +379,7 @@ function init() {
       border: 1px solid rgba(255,255,255,.12);
       box-shadow: 0 12px 30px rgba(74, 120, 255, .20);
       overflow: hidden;
+      animation: floatLogo 4s ease-in-out infinite;
     }
 
     .brand-logo-wrap::after {
@@ -382,6 +388,11 @@ function init() {
       inset: -20%;
       background: conic-gradient(from 180deg, transparent, rgba(255,255,255,.18), transparent 35%);
       animation: spin 6s linear infinite;
+    }
+
+    @keyframes floatLogo {
+      0%,100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-4px) rotate(2deg); }
     }
 
     @keyframes spin {
@@ -543,6 +554,7 @@ function init() {
     .filter-chip:hover {
       background: rgba(255,255,255,.08);
       transform: translateY(-1px);
+      box-shadow: 0 0 18px rgba(59,130,246,.16);
     }
 
     .filter-chip.active {
@@ -555,7 +567,7 @@ function init() {
     .content {
       position: relative;
       padding: 18px 20px 22px;
-      height: calc(100% - 186px);
+      height: calc(100% - 220px);
       overflow: auto;
       scroll-behavior: smooth;
     }
@@ -590,6 +602,9 @@ function init() {
       transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease, background .18s ease;
       overflow: hidden;
       animation: cardIn .35s ease both;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      will-change: transform, box-shadow, border-color;
     }
 
     .card:nth-child(1) { animation-delay: .02s; }
@@ -602,6 +617,11 @@ function init() {
     @keyframes cardIn {
       from { opacity: 0; transform: translateY(12px) scale(.985); }
       to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes hoverPulse {
+      from { transform: translateY(-3px) scale(1); }
+      to { transform: translateY(-5px) scale(1.01); }
     }
 
     .card::before {
@@ -618,6 +638,7 @@ function init() {
       transform: translateY(-3px);
       border-color: rgba(110, 170, 255, .24);
       box-shadow: 0 24px 40px rgba(0,0,0,.24);
+      animation: hoverPulse .9s ease-in-out infinite alternate;
     }
 
     .card:hover::before {
@@ -735,25 +756,6 @@ function init() {
       animation: fadeUp .3s ease;
     }
 
-    .empty-box {
-      max-width: 460px;
-    }
-
-    .empty-logo {
-      width: 70px;
-      height: 70px;
-      object-fit: contain;
-      opacity: .94;
-      margin-bottom: 14px;
-      filter: drop-shadow(0 10px 18px rgba(0,0,0,.22));
-      animation: floaty 3s ease-in-out infinite;
-    }
-
-    @keyframes floaty {
-      0%,100% { transform: translateY(0px); }
-      50% { transform: translateY(-5px); }
-    }
-
     .loading-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
@@ -797,7 +799,7 @@ function init() {
         flex: 1;
       }
       .content {
-        height: calc(100% - 230px);
+        height: calc(100% - 260px);
       }
     }
   </style>
@@ -919,15 +921,15 @@ function init() {
         const active = state.sourceFilter === item.key ? "active" : "";
         const count = counts[item.key] || 0;
 
-        return \`
+        return `
           <button
-            class="filter-chip \${active}"
-            data-source="\${esc(item.key)}"
+            class="filter-chip ${active}"
+            data-source="${esc(item.key)}"
             type="button"
           >
-            \${esc(item.label)} (\${count})
+            ${esc(item.label)} (${count})
           </button>
-        \`;
+        `;
       }).join("");
 
       wrap.querySelectorAll(".filter-chip").forEach((btn) => {
