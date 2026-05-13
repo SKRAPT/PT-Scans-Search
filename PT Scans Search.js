@@ -979,6 +979,36 @@ function init() {
       });
     }
 
+    function attachLibraryListeners() {
+      const loadBtn = document.getElementById("loadLibraryBtn");
+      const backBtn = document.getElementById("backToSearchBtn");
+      
+      if (loadBtn) {
+        loadBtn.addEventListener("click", async () => {
+          const user = document.getElementById("anilistUser")?.value.trim();
+          if (!user) return;
+          state.anilistUser = user;
+          state.libraryLoading = true;
+          render();
+          try {
+            state.libraryResults = await fetchAniListLibrary(user);
+          } catch (e) {
+            state.libraryResults = [];
+            state.status = "Erro ao carregar biblioteca";
+          } finally {
+            state.libraryLoading = false;
+            render();
+          }
+        });
+      }
+      
+      if (backBtn) {
+        backBtn.addEventListener("click", () => {
+          window.webview.send("setMode", "search");
+        });
+      }
+    }
+
     function render() {
       const app = document.getElementById("app");
       const statusText = document.getElementById("statusText");
@@ -995,6 +1025,7 @@ function init() {
         resultMeta.textContent = state.libraryResults.length + " mangas";
         renderFilters([]);
         app.innerHTML = renderLibrary();
+        attachLibraryListeners();
         return;
       }
 
@@ -1152,27 +1183,6 @@ function init() {
     });
 
     render();
-
-    document.getElementById("loadLibraryBtn")?.addEventListener("click", async () => {
-      const user = document.getElementById("anilistUser")?.value.trim();
-      if (!user) return;
-      state.anilistUser = user;
-      state.libraryLoading = true;
-      render();
-      try {
-        state.libraryResults = await fetchAniListLibrary(user);
-      } catch (e) {
-        state.libraryResults = [];
-        state.status = "Erro ao carregar biblioteca";
-      } finally {
-        state.libraryLoading = false;
-        render();
-      }
-    });
-
-    document.getElementById("backToSearchBtn")?.addEventListener("click", () => {
-      window.webview.send("setMode", "search");
-    });
   </script>
 </body>
 </html>
