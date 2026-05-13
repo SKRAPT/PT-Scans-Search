@@ -42,11 +42,11 @@ function init() {
     panel.channel.sync("favorites", favoritesState);
     panel.channel.sync("stats", statsState);
 
-    // ── LocalStorage helpers ─────────────────────────────────────────────────
     function lsGet(key, fallback) {
       try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
       catch { return fallback; }
     }
+
     function lsSet(key, value) {
       try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
     }
@@ -58,6 +58,7 @@ function init() {
       s[key] = (s[key] || 0) + delta;
       saveStats(s);
     }
+
     function cacheGet(query) {
       const cache = lsGet(CACHE_KEY, {});
       const hit = cache[query];
@@ -65,22 +66,23 @@ function init() {
       if (Date.now() - hit.ts > 60 * 60 * 1000) return null;
       return hit.results || null;
     }
+
     function cacheSet(query, results) {
       const cache = lsGet(CACHE_KEY, {});
       cache[query] = { ts: Date.now(), results };
       lsSet(CACHE_KEY, cache);
     }
 
-    // ── History ──────────────────────────────────────────────────────────────
-    function loadHistory()  { historyState.set(lsGet(HISTORY_KEY, [])); }
+    function loadHistory()  { historyState.set((lsGet(HISTORY_KEY, []) || []).slice()); }
     function addToHistory(query) {
       if (!query) return;
-      let hist = lsGet(HISTORY_KEY, []);
+      const current = lsGet(HISTORY_KEY, []);
+      let hist = Array.isArray(current) ? current.slice() : [];
       hist = hist.filter(q => q !== query);
       hist.unshift(query);
       if (hist.length > MAX_HISTORY) hist = hist.slice(0, MAX_HISTORY);
       lsSet(HISTORY_KEY, hist);
-      historyState.set(hist);
+      historyState.set(hist.slice());
     }
     function removeFromHistory(query) {
       const hist = lsGet(HISTORY_KEY, []).filter(q => q !== query);
@@ -92,7 +94,6 @@ function init() {
       historyState.set([]);
     }
 
-    // ── Favorites ────────────────────────────────────────────────────────────
     function loadFavorites() { favoritesState.set(lsGet(FAVORITES_KEY, [])); }
     function toggleFavorite(item) {
       let favs = lsGet(FAVORITES_KEY, []);
@@ -115,7 +116,6 @@ function init() {
       return lsGet(FAVORITES_KEY, []).some(f => f.id === id);
     }
 
-    // ── Provider ─────────────────────────────────────────────────────────────
     let providerPromise = null;
 
     function normalizeText(v)  { return typeof v === "string" ? v.trim() : ""; }
@@ -234,6 +234,7 @@ function init() {
     panel.channel.on("removeFavorite", (id)   => { removeFavorite(id); });
 
     panel.setContent(() => `
+        panel.setContent(() => `
 <!DOCTYPE html>
 <html lang="pt">
 <head>
@@ -421,8 +422,8 @@ function renderSearch(){
 }
 function renderHistory(){
   renderFilters([]);
-  document.getElementById("resultMeta").textContent=state.history.length+" entradas";
-  const hist=state.history;
+  const hist = Array.isArray(state.history) ? state.history.slice() : [];
+  document.getElementById("resultMeta").textContent=hist.length+" entradas";
   if(hist.length===0)return'<div class="history-empty">Nenhuma pesquisa guardada ainda.</div>';
   return'<div class="history-wrap"><div class="history-header"><h3>🕑 Histórico de Pesquisas</h3><button class="btn-sm" id="clearHistBtn">Limpar tudo</button></div><div class="history-list">'+hist.map(q=>'<div class="history-item" data-hist="'+esc(q)+'"><span class="history-item-text">'+esc(q)+'</span><button class="history-del" data-del-hist="'+esc(q)+'" title="Remover">✕</button></div>').join("")+'</div></div>';
 }
@@ -464,7 +465,7 @@ window.webview.on("results",  v=>{ state.results  =v||[]; render(); });
 window.webview.on("status",   v=>{ state.status   =v||"Pronto"; render(); });
 window.webview.on("loading",  v=>{ state.loading  =!!v; render(); });
 window.webview.on("query",    v=>{ state.query    =v||""; render(); });
-window.webview.on("history",  v=>{ state.history  =v||[]; render(); });
+window.webview.on("history",  v=>{ state.history  = Array.isArray(v) ? v.slice() : []; render(); });
 window.webview.on("favorites",v=>{ state.favorites=v||[]; render(); });
 window.webview.on("stats",v=>{ state.stats=v||{ searches:0, opens:0, favorites:0 }; render(); });
 
