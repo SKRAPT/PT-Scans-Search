@@ -877,7 +877,8 @@ function init() {
     }
 
     async function fetchAniListLibrary(username) {
-      const userQuery = `query { User(name: "${username}") { id } }`;
+      const escapedName = username.replace(/"/g, '\\"');
+      const userQuery = 'query { User(name: "' + escapedName + '") { id } }';
       const userRes = await fetch('https://graphql.anilist.co', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -886,7 +887,7 @@ function init() {
       const userData = await userRes.json();
       if (!userData.data || !userData.data.User) throw new Error("Usuário não encontrado");
       const userId = userData.data.User.id;
-      const listQuery = `query { MediaListCollection(userId: ${userId}, type: MANGA, status: CURRENT) { lists { entries { media { title { romaji english } coverImage { large } id chapters status } progress } } } }`;
+      const listQuery = 'query { MediaListCollection(userId: ' + userId + ', type: MANGA, status: CURRENT) { lists { entries { media { title { romaji english } coverImage { large } id chapters status } progress } } } }';
       const listRes = await fetch('https://graphql.anilist.co', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1059,22 +1060,22 @@ function init() {
     }
 
     function renderLibrary() {
-      return `
-        <div style="padding: 20px;">
-          <div style="display: flex; gap: 10px; margin-bottom: 20px; align-items: center;">
-            <input id="anilistUser" placeholder="Nome de usuário AniList" value="${esc(state.anilistUser)}" style="flex: 1; height: 50px; border-radius: 16px; border: 1px solid rgba(255,255,255,.09); background: rgba(6, 10, 19, .42); color: white; padding: 0 16px; outline: none;" />
-            <button id="loadLibraryBtn" class="btn btn-primary">Carregar</button>
-            <button id="backToSearchBtn" class="btn">Voltar</button>
-          </div>
-          ${state.libraryLoading ? renderSkeletons() : ''}
-          <div id="libraryGrid">
-            ${state.libraryResults.length ? '<div class="grid">' + state.libraryResults.map((item) => {
-              const cover = item.image ? '<img class="cover" src="' + esc(item.image) + '" alt="' + esc(item.title) + '" />' : '<div class="fallback">Sem capa</div>';
-              return '<div class="card">' + cover + '<div class="info"><div class="title">' + esc(item.title) + '</div><div class="stats"><div class="chip">Progresso: ' + esc(item.progress) + '/' + esc(item.chapters || '?') + '</div><div class="chip source">AniList</div></div></div></div>';
-            }).join('') + '</div>' : '<div class="empty"><div class="empty-box"><img class="empty-logo" src="' + esc(BRAND_ICON) + '" alt="PT Scans" /><div style="font-size:18px;font-weight:800;color:#f4f8ff;margin-bottom:8px;">Biblioteca AniList</div><div style="font-size:13px;line-height:1.6;color:#9db1d3;">Insira seu nome de usuário e carregue sua biblioteca.</div></div></div>'}
-          </div>
-        </div>
-      `;
+      let libraryContent = '';
+      
+      if (state.libraryResults.length > 0) {
+        libraryContent = '<div class="grid">';
+        for (let item of state.libraryResults) {
+          const cover = item.image ? '<img class="cover" src="' + esc(item.image) + '" alt="' + esc(item.title) + '" />' : '<div class="fallback">Sem capa</div>';
+          libraryContent += '<div class="card">' + cover + '<div class="info"><div class="title">' + esc(item.title) + '</div><div class="stats"><div class="chip">Progresso: ' + esc(item.progress) + '/' + esc(item.chapters || '?') + '</div><div class="chip source">AniList</div></div></div></div>';
+        }
+        libraryContent += '</div>';
+      } else {
+        libraryContent = '<div class="empty"><div class="empty-box"><img class="empty-logo" src="' + esc(BRAND_ICON) + '" alt="PT Scans" /><div style="font-size:18px;font-weight:800;color:#f4f8ff;margin-bottom:8px;">Biblioteca AniList</div><div style="font-size:13px;line-height:1.6;color:#9db1d3;">Insira seu nome de usuário e carregue sua biblioteca.</div></div></div>';
+      }
+      
+      const loadingContent = state.libraryLoading ? renderSkeletons() : '';
+      
+      return '<div style="padding: 20px;"><div style="display: flex; gap: 10px; margin-bottom: 20px; align-items: center;"><input id="anilistUser" placeholder="Nome de usuário AniList" value="' + esc(state.anilistUser) + '" style="flex: 1; height: 50px; border-radius: 16px; border: 1px solid rgba(255,255,255,.09); background: rgba(6, 10, 19, .42); color: white; padding: 0 16px; outline: none;" /><button id="loadLibraryBtn" class="btn btn-primary">Carregar</button><button id="backToSearchBtn" class="btn">Voltar</button></div>' + loadingContent + '<div id="libraryGrid">' + libraryContent + '</div></div>';
     }
 
     document.getElementById("searchBtn").addEventListener("click", () => {
