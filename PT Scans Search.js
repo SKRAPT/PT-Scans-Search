@@ -1,1064 +1,1519 @@
 function init() {
-  $ui.register((ctx) => {
-    const BRAND_ICON = "https://raw.githubusercontent.com/SKRAPT/PT-Scans/main/upscan.png";
-    const PROVIDER_MANIFEST_URL =
-      "https://raw.githubusercontent.com/SKRAPT/PT-Scans/refs/heads/main/ptscans-provider.json";
+$ui.register((ctx) => {
+const BRAND_ICON = "https://raw.githubusercontent.com/SKRAPT/PT-Scans/main/upscan.png";
+const PROVIDER_MANIFEST_URL =
+"https://raw.githubusercontent.com/SKRAPT/PT-Scans/refs/heads/main/ptscans-provider.json";
 
-    const tray = ctx.newTray({
-      tooltipText: "PT Scans Search",
-      iconUrl: BRAND_ICON,
-      withContent: false
-    });
+// AniList PIN flow config (PIN flow uses redirect_uri = https://anilist.co/api/v2/oauth/pin)
+const ANILIST_CLIENT_ID = ""; // opcional para PIN, podes deixar vazio
+const ANILIST_CLIENT_SECRET = ""; // opcional para PIN
+const ANILIST_REDIRECT_URI = "https://anilist.co/api/v2/oauth/pin";
+const ANILIST_AUTH_URL = "https://anilist.co/api/v2/oauth/authorize";
+const ANILIST_TOKEN_URL = "https://anilist.co/api/v2/oauth/token";
+const ANILIST_GRAPHQL = "https://graphql.anilist.co";
 
-    const panel = ctx.newWebview({
-      slot: "fixed",
-      width: "100%",
-      maxWidth: "1280px",
-      height: "86vh",
-      hidden: true,
-      zIndex: 60,
-      window: {
-        draggable: true,
-        defaultPosition: "bottom-right",
-        frameless: true
-      }
-    });
+const tray = ctx.newTray({
+tooltipText: "PT Scans Search",
+iconUrl: BRAND_ICON,
+withContent: false
+});
 
-    const queryState = ctx.state("");
-    const loading = ctx.state(false);
-    const status = ctx.state("Pronto");
-    const results = ctx.state([]);
+const panel = ctx.newWebview({
+slot: "fixed",
+width: "100%",
+maxWidth: "1280px",
+height: "86vh",
+hidden: true,
+zIndex: 60,
+window: {
+draggable: true,
+defaultPosition: "bottom-right",
+frameless: true
+}
+});
 
-    panel.channel.sync("results", results);
-    panel.channel.sync("status", status);
-    panel.channel.sync("loading", loading);
-    panel.channel.sync("query", queryState);
+const queryState = ctx.state("");
+const loading = ctx.state(false);
+const status = ctx.state("Pronto");
+const results = ctx.state([]);
 
-    let providerPromise = null;
+panel.channel.sync("results", results);
+panel.channel.sync("status", status);
+panel.channel.sync("loading", loading);
+panel.channel.sync("query", queryState);
 
-    function normalizeText(value) {
-      return typeof value === "string" ? value.trim() : "";
-    }
+let providerPromise = null;
 
-    function splitSourceId(value) {
-      const raw = normalizeText(value);
-      const idx = raw.indexOf(":");
-      if (idx === -1) return { source: "", id: raw };
-      return { source: raw.slice(0, idx), id: raw.slice(idx + 1) };
-    }
+/* -------------------------
+Utilitários existentes
+------------------------- */
 
-    function sourceLabel(source) {
-      if (source === "mangaflix") return "MangaFlix";
-      if (source === "mangalivre") return "MangaLivre";
-      if (source === "hipercool") return "HiperCool";
-      if (source === "tiamanhwa") return "TiaManhwa";
-      if (source === "mangafire") return "MangaFire";
-      return source || "Desconhecido";
-    }
+function normalizeText(value) {
+return typeof value === "string" ? value.trim() : "";
+}
 
-    function stripProviderPrefix(title) {
-      return String(title || "")
-        .replace(/^\s*\[(MangaFlix|MangaLivre|HiperCool|TiaManhwa|MangaFire)\]\s*/i, "")
-        .replace(/^\s*(MangaFlix|MangaLivre|HiperCool|TiaManhwa|MangaFire)\s*[•\-:]\s*/i, "")
-        .trim();
-    }
+function splitSourceId(value) {
+const raw = normalizeText(value);
+const idx = raw.indexOf(":");
+if (idx === -1) return { source: "", id: raw };
+return { source: raw.slice(0, idx), id: raw.slice(idx + 1) };
+}
 
-    function safeArray(value) {
-      return Array.isArray(value) ? value : [];
-    }
+function sourceLabel(source) {
+if (source === "mangaflix") return "MangaFlix";
+if (source === "mangalivre") return "MangaLivre";
+if (source === "hipercool") return "HiperCool";
+if (source === "tiamanhwa") return "TiaManhwa";
+if (source === "mangafire") return "MangaFire";
+return source || "Desconhecido";
+}
 
-    async function getProvider() {
-      if (providerPromise) return providerPromise;
+function stripProviderPrefix(title) {
+return String(title || "")
+.replace(/^\s*
+(
+M
+a
+n
+g
+a
+F
+l
+i
+x
+∣
+M
+a
+n
+g
+a
+L
+i
+v
+r
+e
+∣
+H
+i
+p
+e
+r
+C
+o
+o
+l
+∣
+T
+i
+a
+M
+a
+n
+h
+w
+a
+∣
+M
+a
+n
+g
+a
+F
+i
+r
+e
+)
+(MangaFlix∣MangaLivre∣HiperCool∣TiaManhwa∣MangaFire)\s*/i, "")
+.replace(/^\s*(MangaFlix|MangaLivre|HiperCool|TiaManhwa|MangaFire)\s*[- -:]\s*/i, "")
+.trim();
+}
 
-      providerPromise = (async () => {
-        const res = await fetch(PROVIDER_MANIFEST_URL, {
-          headers: { Accept: "application/json, text/plain, */*" }
-        });
+function safeArray(value) {
+return Array.isArray(value) ? value : [];
+}
 
-        if (!res.ok) {
-          throw new Error("Falha ao carregar provider: HTTP " + res.status);
-        }
+/* -------------------------
+AniList helpers (PIN flow, memória)
+------------------------- */
 
-        const manifest = await res.json();
-        const payload = String(manifest && manifest.payload ? manifest.payload : "").trim();
+// token apenas em memória conforme solicitado
+function _saveAnilistTokenMemory(tokenObj) {
+ctx._anilistToken = tokenObj;
+}
+function _loadAnilistTokenMemory() {
+return ctx._anilistToken || null;
+}
+function _clearAnilistTokenMemory() {
+ctx._anilistToken = null;
+}
 
-        if (!payload) {
-          throw new Error("Provider sem payload.");
-        }
+function buildAnilistPinUrl() {
+const params = new URLSearchParams({
+client_id: ANILIST_CLIENT_ID || "",
+redirect_uri: ANILIST_REDIRECT_URI,
+response_type: "code"
+});
+return ${ANILIST_AUTH_URL}?${params.toString()};
+}
 
-        const ProviderClass = new Function(payload + "\nreturn Provider;")();
-        const provider = new ProviderClass();
+async function exchangePinForToken(pin) {
+const body = new URLSearchParams({
+grant_type: "authorization_code",
+client_id: ANILIST_CLIENT_ID || "",
+client_secret: ANILIST_CLIENT_SECRET || "",
+redirect_uri: ANILIST_REDIRECT_URI,
+code: pin
+});
+const res = await fetch(ANILIST_TOKEN_URL, {
+method: "POST",
+headers: { "Content-Type": "application/x-www-form-urlencoded" },
+body: body.toString()
+});
+if (!res.ok) {
+const t = await res.text();
+throw new Error("Falha ao trocar PIN por token: " + res.status + " " + t);
+}
+const json = await res.json();
+const now = Date.now();
+const tokenObj = {
+access_token: json.access_token,
+expires_at: json.expires_in ? now + json.expires_in * 1000 : null,
+obtained_at: now,
+raw: json
+};
+_saveAnilistTokenMemory(tokenObj);
+return tokenObj;
+}
 
-        provider.getDisableNsfwConfig = () => false;
+async function anilistGraphQL(query, variables = {}, token) {
+const headers = { "Content-Type": "application/json", Accept: "application/json" };
+if (token && token.access_token) headers["Authorization"] = "Bearer " + token.access_token;
+const res = await fetch(ANILIST_GRAPHQL, {
+method: "POST",
+headers,
+body: JSON.stringify({ query, variables })
+});
+if (!res.ok) {
+const t = await res.text();
+throw new Error("AniList GraphQL erro: " + res.status + " " + t);
+}
+return await res.json();
+}
 
-        return provider;
-      })();
+async function fetchViewerAndCollection(token, mediaType = "MANGA") {
+const viewerQ = query { Viewer { id name } };
+const viewerRes = await anilistGraphQL(viewerQ, {}, token);
+const viewer = viewerRes && viewerRes.data && viewerRes.data.Viewer ? viewerRes.data.Viewer : null;
+if (!viewer) return null;
 
-      return providerPromise;
-    }
+const q = `
+query ($userId: Int, $type: MediaType) {
+MediaListCollection(userId: $userId, type: $type) {
+lists {
+name
+entries {
+id status score progress progressVolumes updatedAt
+media {
+id title { romaji english native } synonyms description coverImage { large medium } startDate { year } siteUrl
+}
+}
+}
+}
+}
+`;
+const res = await anilistGraphQL(q, { userId: viewer.id, type: mediaType }, token);
+const collection = res && res.data && res.data.MediaListCollection ? res.data.MediaListCollection : null;
+return { viewer, collection };
+}
 
-    async function enrichWithChapters(provider, items) {
-      const limited = items.slice(0, 24);
+/* -------------------------
+Provider loader (mantive o teu fluxo)
+------------------------- */
 
-      const detailed = await Promise.allSettled(
-        limited.map(async (item) => {
-          let chapters = [];
-          try {
-            chapters = safeArray(await provider.findChapters(item.id));
-          } catch (e) {}
+async function getProvider() {
+if (providerPromise) return providerPromise;
 
-          const src = splitSourceId(item.id).source;
+providerPromise = (async () => {
+const res = await fetch(PROVIDER_MANIFEST_URL, {
+headers: { Accept: "application/json, text/plain, /" }
+});
 
-          return {
-            id: item.id,
-            source: sourceLabel(src),
-            rawSource: src,
-            title: stripProviderPrefix(item.title || ""),
-            originalTitle: item.title || "",
-            image: item.image || "",
-            year: item.year || null,
-            synonyms: safeArray(item.synonyms),
-            hasChapters: chapters.length > 0,
-            chapterCount: chapters.length,
-            latestChapter: chapters.length ? (chapters[chapters.length - 1].chapter || null) : null
-          };
-        })
-      );
+if (!res.ok) {
+throw new Error("Falha ao carregar provider: HTTP " + res.status);
+}
 
-      const ok = detailed
-        .filter((entry) => entry.status === "fulfilled")
-        .map((entry) => entry.value);
+const manifest = await res.json();
+const payload = String(manifest && manifest.payload ? manifest.payload : "").trim();
 
-      if (items.length > limited.length) {
-        const rest = items.slice(limited.length).map((item) => {
-          const src = splitSourceId(item.id).source;
-          return {
-            id: item.id,
-            source: sourceLabel(src),
-            rawSource: src,
-            title: stripProviderPrefix(item.title || ""),
-            originalTitle: item.title || "",
-            image: item.image || "",
-            year: item.year || null,
-            synonyms: safeArray(item.synonyms),
-            hasChapters: false,
-            chapterCount: 0,
-            latestChapter: null
-          };
-        });
-        return ok.concat(rest);
-      }
+if (!payload) {
+throw new Error("Provider sem payload.");
+}
 
-      return ok;
-    }
+const ProviderClass = new Function(payload + "\nreturn Provider;")();
+const provider = new ProviderClass();
 
-    async function runSearch(rawQuery) {
-      const query = normalizeText(rawQuery);
-      queryState.set(query);
+provider.getDisableNsfwConfig = () => false;
 
-      if (!query) {
-        status.set("Escreve um título.");
-        results.set([]);
-        tray.updateBadge({ number: 0 });
-        return;
-      }
+// expõe métodos AniList no provider (PIN flow)
+provider.anilist = {
+startPinAuth: async () => {
+// envia URL ao webview para abrir (o utilizador obtém o PIN no site AniList)
+const url = buildAnilistPinUrl();
+panel.channel.send("openExternalUrl", url);
+},
+submitPin: async (pin) => {
+const token = await exchangePinForToken(String(pin).trim());
+try {
+const lib = await fetchViewerAndCollection(token, "MANGA");
+panel.channel.send("anilistAuthState", !!lib);
+panel.channel.send("anilistLibrary", lib || null);
+} catch (e) {
+panel.channel.send("anilistAuthState", true);
+panel.channel.send("anilistLibrary", null);
+}
+return token;
+},
+logout: async () => {
+_clearAnilistTokenMemory();
+panel.channel.send("anilistAuthState", false);
+panel.channel.send("anilistLibrary", null);
+},
+getUserLibrary: async (mediaType = "MANGA") => {
+const token = _loadAnilistTokenMemory();
+if (!token) return null;
+try {
+return await fetchViewerAndCollection(token, mediaType);
+} catch (e) {
+console.error("Erro getUserLibrary:", e);
+return null;
+}
+}
+};
 
-      loading.set(true);
-      status.set("A carregar...");
-      results.set([]);
+return provider;
+})();
 
-      try {
-        const provider = await getProvider();
+return providerPromise;
+}
 
-        status.set("A pesquisar...");
-        let found = safeArray(await provider.search({ query }));
-        found = found.slice(0, 40);
+/* -------------------------
+Biblioteca do utilizador: carga e matching
+------------------------- */
 
-        status.set("A obter capítulos...");
-        const enriched = await enrichWithChapters(provider, found);
+// mapa de bibliotecas em memória para matching rápido
+let userLibraryMap = new Map();
 
-        results.set(enriched);
+function tryMatchLibraryForItem(item) {
+const rawId = String(item.id || "");
+const idx = rawId.indexOf(":");
+const idPart = idx !== -1 ? rawId.slice(idx + 1) : rawId;
+const byIdKey = ani:${idPart};
+if (userLibraryMap.has(byIdKey)) return userLibraryMap.get(byIdKey);
+const t = (stripProviderPrefix(item.title || "") || "").toLowerCase();
+if (userLibraryMap.has(title:${t})) return userLibraryMap.get(title:${t});
+for (const [k, v] of userLibraryMap.entries()) {
+if (k.startsWith("title:") && k.includes(t) && t.length > 3) return v;
+}
+return null;
+}
 
-        const withCaps = enriched.filter((item) => item.hasChapters).length;
-        tray.updateBadge({
-          number: enriched.length,
-          intent: withCaps > 0 ? "info" : "warning"
-        });
+async function enrichWithChapters(provider, items) {
+const limited = items.slice(0, 24);
 
-        status.set(enriched.length ? "Concluído" : "Sem resultados");
-      } catch (e) {
-        console.error("Erro no plugin:", e);
-        status.set("Erro: " + (e && e.message ? e.message : "falha desconhecida"));
-        results.set([]);
-        tray.updateBadge({ number: 0 });
-      } finally {
-        loading.set(false);
-      }
-    }
+const detailed = await Promise.allSettled(
+limited.map(async (item) => {
+let chapters = [];
+try {
+chapters = safeArray(await provider.findChapters(item.id));
+} catch (e) {}
 
-    tray.onClick(() => {
-      panel.show();
-    });
+const src = splitSourceId(item.id).source;
 
-    panel.channel.on("search", async (query) => {
-      await runSearch(query || "");
-    });
+const base = {
+id: item.id,
+source: sourceLabel(src),
+rawSource: src,
+title: stripProviderPrefix(item.title || ""),
+originalTitle: item.title || "",
+image: item.image || "",
+year: item.year || null,
+synonyms: safeArray(item.synonyms),
+hasChapters: chapters.length > 0,
+chapterCount: chapters.length,
+latestChapter: chapters.length ? (chapters[chapters.length - 1].chapter || null) : null
+};
 
-    panel.channel.on("hide", () => {
-      panel.hide();
-    });
+// tenta fazer match com a biblioteca do utilizador
+try {
+const match = tryMatchLibraryForItem(item);
+if (match) {
+base.ani = {
+mediaId: match.mediaId,
+progress: match.progress,
+progressVolumes: match.progressVolumes,
+cover: match.cover,
+url: match.siteUrl,
+rawMedia: match.rawMedia
+};
+}
+} catch (e) {
+// ignore matching errors
+}
 
-    panel.channel.on("clear", () => {
-      queryState.set("");
-      status.set("Pronto");
-      loading.set(false);
-      results.set([]);
-      tray.updateBadge({ number: 0 });
-    });
+return base;
+})
+);
 
-    panel.channel.on("reloadProvider", async () => {
-      providerPromise = null;
-      status.set("Cache limpa");
-    });
+const ok = detailed
+.filter((entry) => entry.status === "fulfilled")
+.map((entry) => entry.value);
 
-    panel.setContent(() => `
+if (items.length > limited.length) {
+const rest = items.slice(limited.length).map((item) => {
+const src = splitSourceId(item.id).source;
+return {
+id: item.id,
+source: sourceLabel(src),
+rawSource: src,
+title: stripProviderPrefix(item.title || ""),
+originalTitle: item.title || "",
+image: item.image || "",
+year: item.year || null,
+synonyms: safeArray(item.synonyms),
+hasChapters: false,
+chapterCount: 0,
+latestChapter: null
+};
+});
+return ok.concat(rest);
+}
+
+return ok;
+}
+
+/* -------------------------
+Run search (com carga da biblioteca do utilizador antes do enrich)
+------------------------- */
+
+async function runSearch(rawQuery) {
+const query = normalizeText(rawQuery);
+queryState.set(query);
+
+if (!query) {
+status.set("Escreve um título.");
+results.set([]);
+tray.updateBadge({ number: 0 });
+return;
+}
+
+loading.set(true);
+status.set("A carregar...");
+results.set([]);
+
+try {
+const provider = await getProvider();
+
+// tentar carregar biblioteca do utilizador (MANGA)
+userLibraryMap = new Map();
+try {
+const token = _loadAnilistTokenMemory();
+if (token) {
+const lib = await provider.anilist.getUserLibrary("MANGA");
+if (lib && lib.collection && Array.isArray(lib.collection.lists)) {
+lib.collection.lists.forEach((list) => {
+(list.entries || []).forEach((entry) => {
+if (entry.status === "CURRENT") {
+const media = entry.media;
+const keyById = ani:${media.id};
+userLibraryMap.set(keyById, {
+mediaId: media.id,
+title: media.title && (media.title.romaji || media.title.english || media.title.native),
+progress: entry.progress,
+progressVolumes: entry.progressVolumes,
+siteUrl: media.siteUrl,
+cover: media.coverImage && (media.coverImage.large || media.coverImage.medium),
+rawMedia: media
+});
+const titles = [media.title.romaji, media.title.english, media.title.native].filter(Boolean);
+(media.synonyms || []).forEach(s => titles.push(s));
+titles.forEach(t => {
+if (!t) return;
+userLibraryMap.set(title:${t.toLowerCase()}, {
+mediaId: media.id,
+title: media.title && (media.title.romaji || media.title.english || media.title.native),
+progress: entry.progress,
+progressVolumes: entry.progressVolumes,
+siteUrl: media.siteUrl,
+cover: media.coverImage && (media.coverImage.large || media.coverImage.medium),
+rawMedia: media
+});
+});
+}
+});
+});
+}
+panel.channel.send("anilistLibrary", lib || null);
+panel.channel.send("anilistAuthState", !!lib);
+} else {
+panel.channel.send("anilistLibrary", null);
+panel.channel.send("anilistAuthState", false);
+}
+} catch (e) {
+console.warn("AniList library load falhou:", e);
+panel.channel.send("anilistLibrary", null);
+panel.channel.send("anilistAuthState", false);
+}
+
+status.set("A pesquisar...");
+let found = safeArray(await provider.search({ query }));
+found = found.slice(0, 40);
+
+status.set("A obter capítulos...");
+const enriched = await enrichWithChapters(provider, found);
+
+results.set(enriched);
+
+const withCaps = enriched.filter((item) => item.hasChapters).length;
+tray.updateBadge({
+number: enriched.length,
+intent: withCaps > 0 ? "info" : "warning"
+});
+
+status.set(enriched.length ? "Concluído" : "Sem resultados");
+} catch (e) {
+console.error("Erro no plugin:", e);
+status.set("Erro: " + (e && e.message ? e.message : "falha desconhecida"));
+results.set([]);
+tray.updateBadge({ number: 0 });
+} finally {
+loading.set(false);
+}
+}
+
+/* -------------------------
+Eventos UI / canais
+------------------------- */
+
+tray.onClick(() => {
+panel.show();
+});
+
+panel.channel.on("search", async (query) => {
+await runSearch(query || "");
+});
+
+panel.channel.on("hide", () => {
+panel.hide();
+});
+
+panel.channel.on("clear", () => {
+queryState.set("");
+status.set("Pronto");
+loading.set(false);
+results.set([]);
+tray.updateBadge({ number: 0 });
+});
+
+panel.channel.on("reloadProvider", async () => {
+providerPromise = null;
+status.set("Cache limpa");
+});
+
+// handlers AniList (iniciam PIN flow, submetem PIN, logout, toggle sync)
+panel.channel.on("anilistStartPin", async () => {
+try {
+const provider = await getProvider();
+await provider.anilist.startPinAuth();
+// instruir webview a mostrar botão de colar PIN
+panel.channel.send("showPastePin", true);
+} catch (e) {
+console.error("Erro iniciar PIN AniList:", e);
+}
+});
+
+panel.channel.on("anilistSubmitPin", async (pin) => {
+try {
+const provider = await getProvider();
+const token = await provider.anilist.submitPin(pin);
+if (token) {
+panel.channel.send("anilistAuthState", true);
+const lib = await provider.anilist.getUserLibrary("MANGA");
+panel.channel.send("anilistLibrary", lib || null);
+} else {
+panel.channel.send("anilistAuthState", false);
+panel.channel.send("anilistLibrary", null);
+}
+} catch (e) {
+console.error("Erro ao submeter PIN:", e);
+panel.channel.send("anilistAuthState", false);
+panel.channel.send("anilistLibrary", null);
+panel.channel.send("anilistError", String(e && e.message ? e.message : e));
+}
+});
+
+panel.channel.on("anilistLogout", async () => {
+try {
+const provider = await getProvider();
+await provider.anilist.logout();
+panel.channel.send("anilistAuthState", false);
+panel.channel.send("anilistLibrary", null);
+} catch (e) {
+console.error("Erro logout AniList:", e);
+}
+});
+
+panel.channel.on("anilistSyncToggle", async (enabled) => {
+try {
+const provider = await getProvider();
+if (enabled) {
+const lib = await provider.anilist.getUserLibrary("MANGA");
+panel.channel.send("anilistLibrary", lib || null);
+} else {
+panel.channel.send("anilistLibrary", null);
+}
+} catch (e) {
+console.error("Erro anilistSyncToggle:", e);
+}
+});
+
+/* -------------------------
+Webview content (HTML + JS)
+------------------------- */
+
+panel.setContent(() => `
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
-    html { color-scheme: dark; overflow: hidden; }
-    :root {
-      --line: rgba(255,255,255,.09);
-      --text: #edf4ff;
-      --muted: #98a9c7;
-      --blue: #5ea2ff;
-      --purple: #9b7cff;
-      --shadow: 0 18px 50px rgba(0,0,0,.38);
-    }
-
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      color: var(--text);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-      background: transparent;
-      overflow: hidden;
-    }
-
-    .overlay {
-      position: relative;
-      width: 100%;
-      height: 100vh;
-      padding: 18px;
-      overflow: hidden;
-      background:
-        radial-gradient(circle at 12% 12%, rgba(94,162,255,.20), transparent 24%),
-        radial-gradient(circle at 86% 14%, rgba(155,124,255,.18), transparent 24%),
-        rgba(2, 6, 18, .42);
-      backdrop-filter: blur(18px) saturate(140%);
-      -webkit-backdrop-filter: blur(18px) saturate(140%);
-    }
-
-    .blob,
-    .blob::before,
-    .blob::after {
-      position: absolute;
-      border-radius: 999px;
-      filter: blur(40px);
-      pointer-events: none;
-    }
-
-    .blob {
-      width: 280px;
-      height: 280px;
-      left: -60px;
-      top: -40px;
-      background: rgba(91, 168, 255, .18);
-      animation: driftA 14s ease-in-out infinite;
-    }
-
-    .blob::before {
-      content: "";
-      width: 210px;
-      height: 210px;
-      left: 980px;
-      top: 80px;
-      background: rgba(164, 118, 255, .14);
-      animation: driftB 16s ease-in-out infinite;
-    }
-
-    .blob::after {
-      content: "";
-      width: 240px;
-      height: 240px;
-      left: 460px;
-      top: 520px;
-      background: rgba(86, 234, 181, .10);
-      animation: driftC 18s ease-in-out infinite;
-    }
-
-    @keyframes driftA {
-      0%,100% { transform: translate3d(0,0,0) scale(1); }
-      50% { transform: translate3d(60px,35px,0) scale(1.08); }
-    }
-    @keyframes driftB {
-      0%,100% { transform: translate3d(0,0,0) scale(1); }
-      50% { transform: translate3d(-70px,25px,0) scale(1.12); }
-    }
-    @keyframes driftC {
-      0%,100% { transform: translate3d(0,0,0) scale(1); }
-      50% { transform: translate3d(35px,-55px,0) scale(1.06); }
-    }
-
-    .window {
-      position: relative;
-      width: 100%;
-      height: calc(86vh - 6px);
-      border-radius: 28px;
-      overflow: hidden;
-      background: linear-gradient(180deg, rgba(14, 20, 36, .84), rgba(8, 12, 23, .78));
-      border: 1px solid rgba(255,255,255,.11);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(22px);
-      -webkit-backdrop-filter: blur(22px);
-      animation: fadeUp .35s ease;
-    }
-
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(10px) scale(.988); }
-      to { opacity: 1; transform: translateY(0) scale(1); }
-    }
-
-    .shine {
-      position: absolute;
-      inset: 0 auto auto -20%;
-      width: 45%;
-      height: 2px;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,.65), transparent);
-      opacity: .45;
-      animation: shine 5.6s linear infinite;
-    }
-
-    @keyframes shine {
-      from { transform: translateX(-15%); }
-      to { transform: translateX(250%); }
-    }
-
-    .topbar {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      padding: 18px 20px;
-      border-bottom: 1px solid var(--line);
-      background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.02));
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      min-width: 220px;
-    }
-
-    .brand-logo-wrap {
-      position: relative;
-      width: 54px;
-      height: 54px;
-      border-radius: 18px;
-      display: grid;
-      place-items: center;
-      background: linear-gradient(180deg, rgba(94,162,255,.18), rgba(155,124,255,.16));
-      border: 1px solid rgba(255,255,255,.12);
-      box-shadow: 0 12px 30px rgba(74, 120, 255, .20);
-      overflow: hidden;
-    }
-
-    .brand-logo-wrap::after {
-      content: "";
-      position: absolute;
-      inset: -20%;
-      background: conic-gradient(from 180deg, transparent, rgba(255,255,255,.18), transparent 35%);
-      animation: spin 6s linear infinite;
-    }
-
-    @keyframes spin {
-      from { transform: rotate(0); }
-      to { transform: rotate(360deg); }
-    }
-
-    .brand-logo {
-      position: relative;
-      z-index: 1;
-      width: 34px;
-      height: 34px;
-      object-fit: contain;
-      filter: drop-shadow(0 3px 10px rgba(0,0,0,.35));
-    }
-
-    .brand-title {
-      font-size: 17px;
-      font-weight: 800;
-      color: #f8fbff;
-      letter-spacing: .2px;
-    }
-
-    .searchbar {
-      flex: 1;
-      display: flex;
-      gap: 10px;
-      min-width: 0;
-      align-items: center;
-    }
-
-    .search-shell {
-      flex: 1;
-      position: relative;
-      min-width: 0;
-    }
-
-    .search-shell::before {
-      content: "⌕";
-      position: absolute;
-      left: 14px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: #9bb8eb;
-      font-size: 15px;
-      opacity: .9;
-      pointer-events: none;
-    }
-
-    .searchbar input {
-      width: 100%;
-      height: 50px;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,.09);
-      background: rgba(6, 10, 19, .42);
-      color: white;
-      padding: 0 16px 0 40px;
-      outline: none;
-      font-size: 14px;
-      transition: .2s ease;
-    }
-
-    .searchbar input:focus {
-      border-color: rgba(94,162,255,.45);
-      box-shadow: 0 0 0 4px rgba(94,162,255,.12);
-      background: rgba(7, 12, 24, .55);
-    }
-
-    .btn {
-      height: 50px;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,.09);
-      padding: 0 16px;
-      color: white;
-      cursor: pointer;
-      font-weight: 800;
-      font-size: 13px;
-      background: rgba(255,255,255,.045);
-      transition: transform .16s ease, background .16s ease, border-color .16s ease, box-shadow .16s ease;
-    }
-
-    .btn:hover {
-      transform: translateY(-1px);
-      background: rgba(255,255,255,.07);
-      border-color: rgba(255,255,255,.14);
-    }
-
-    .btn-primary {
-      background: linear-gradient(135deg, #3b82f6, #2563eb);
-      border-color: rgba(108, 164, 255, .45);
-      box-shadow: 0 14px 28px rgba(37,99,235,.28);
-    }
-
-    .meta {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 12px 20px;
-      border-bottom: 1px solid rgba(255,255,255,.05);
-      color: var(--muted);
-      font-size: 13px;
-      background: rgba(255,255,255,.02);
-    }
-
-    .status-wrap {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      min-width: 0;
-    }
-
-    .status-dot {
-      width: 9px;
-      height: 9px;
-      border-radius: 999px;
-      background: var(--blue);
-      box-shadow: 0 0 18px rgba(94,162,255,.8);
-      animation: pulse 1.3s ease-in-out infinite;
-      flex-shrink: 0;
-    }
-
-    @keyframes pulse {
-      0%,100% { transform: scale(.88); opacity: .72; }
-      50% { transform: scale(1.2); opacity: 1; }
-    }
-
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      border-radius: 999px;
-      padding: 9px 13px;
-      background: rgba(255,255,255,.05);
-      border: 1px solid rgba(255,255,255,.06);
-      color: #dbe7ff;
-    }
-
-    .filters {
-      display: flex;
-      gap: 10px;
-      padding: 12px 20px 0;
-      flex-wrap: wrap;
-    }
-
-    .filter-chip {
-      border: 1px solid rgba(255,255,255,.08);
-      background: rgba(255,255,255,.04);
-      color: #d7e5ff;
-      height: 38px;
-      padding: 0 14px;
-      border-radius: 999px;
-      cursor: pointer;
-      font-size: 12px;
-      font-weight: 800;
-      transition: .18s ease;
-    }
-
-    .filter-chip:hover {
-      background: rgba(255,255,255,.08);
-      transform: translateY(-1px);
-    }
-
-    .filter-chip.active {
-      background: linear-gradient(135deg, rgba(59,130,246,.22), rgba(147,51,234,.18));
-      border-color: rgba(94,162,255,.32);
-      color: #ffffff;
-      box-shadow: 0 8px 20px rgba(59,130,246,.16);
-    }
-
-    .content {
-      position: relative;
-      padding: 18px 20px 22px;
-      height: calc(100% - 186px);
-      overflow: auto;
-      scroll-behavior: smooth;
-    }
-
-    .content::-webkit-scrollbar {
-      width: 10px;
-    }
-
-    .content::-webkit-scrollbar-thumb {
-      background: rgba(255,255,255,.10);
-      border-radius: 999px;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-      gap: 18px;
-    }
-
-    .card {
-      position: relative;
-      display: flex;
-      gap: 14px;
-      padding: 14px;
-      min-height: 190px;
-      border-radius: 24px;
-      background:
-        linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.025)),
-        rgba(13,18,30,.72);
-      border: 1px solid rgba(255,255,255,.08);
-      box-shadow: 0 16px 34px rgba(0,0,0,.18);
-      transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease, background .18s ease;
-      overflow: hidden;
-      animation: cardIn .35s ease both;
-    }
-
-    .card:nth-child(1) { animation-delay: .02s; }
-    .card:nth-child(2) { animation-delay: .04s; }
-    .card:nth-child(3) { animation-delay: .06s; }
-    .card:nth-child(4) { animation-delay: .08s; }
-    .card:nth-child(5) { animation-delay: .10s; }
-    .card:nth-child(6) { animation-delay: .12s; }
-
-    @keyframes cardIn {
-      from { opacity: 0; transform: translateY(12px) scale(.985); }
-      to { opacity: 1; transform: translateY(0) scale(1); }
-    }
-
-    .card::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,.05) 20%, transparent 42%);
-      transform: translateX(-120%);
-      transition: transform .65s ease;
-      pointer-events: none;
-    }
-
-    .card:hover {
-      transform: translateY(-3px);
-      border-color: rgba(110, 170, 255, .24);
-      box-shadow: 0 24px 40px rgba(0,0,0,.24);
-    }
-
-    .card:hover::before {
-      transform: translateX(140%);
-    }
-
-    .cover,
-    .fallback {
-      width: 106px;
-      height: 150px;
-      border-radius: 18px;
-      flex-shrink: 0;
-    }
-
-    .cover {
-      object-fit: cover;
-      background: rgba(7,10,18,.55);
-      border: 1px solid rgba(255,255,255,.07);
-      box-shadow: 0 8px 20px rgba(0,0,0,.22);
-    }
-
-    .fallback {
-      border: 1px solid rgba(255,255,255,.07);
-      background:
-        radial-gradient(circle at 30% 20%, rgba(94,162,255,.20), transparent 28%),
-        linear-gradient(180deg, rgba(20,27,43,.95), rgba(9,12,20,.95));
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #8ea2c5;
-      font-size: 12px;
-      text-align: center;
-      padding: 12px;
-    }
-
-    .info {
-      min-width: 0;
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-    }
-
-    .title {
-      font-size: 17px;
-      font-weight: 800;
-      line-height: 1.34;
-      margin: 0 0 10px 0;
-      color: #f7fbff;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-
-    .stats {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-
-    .chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      border-radius: 999px;
-      padding: 7px 11px;
-      font-size: 12px;
-      font-weight: 800;
-      border: 1px solid rgba(255,255,255,.06);
-      background: rgba(255,255,255,.05);
-      color: #d8e4fb;
-    }
-
-    .chip.ok {
-      color: #c8ffe0;
-      background: rgba(34,197,94,.11);
-      border-color: rgba(34,197,94,.19);
-    }
-
-    .chip.no {
-      color: #ffd0d8;
-      background: rgba(239,68,68,.10);
-      border-color: rgba(239,68,68,.18);
-    }
-
-    .chip.source {
-      color: #d5e7ff;
-      background: rgba(59,130,246,.12);
-      border-color: rgba(59,130,246,.18);
-    }
-
-    .sub {
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.45;
-      word-break: break-word;
-      opacity: .95;
-    }
-
-    .empty {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 380px;
-      border-radius: 26px;
-      border: 1px dashed rgba(255,255,255,.10);
-      background:
-        radial-gradient(circle at top, rgba(94,162,255,.08), transparent 36%),
-        rgba(255,255,255,.025);
-      color: #9db1d3;
-      text-align: center;
-      padding: 32px;
-      animation: fadeUp .3s ease;
-    }
-
-    .empty-box {
-      max-width: 460px;
-    }
-
-    .empty-logo {
-      width: 70px;
-      height: 70px;
-      object-fit: contain;
-      opacity: .94;
-      margin-bottom: 14px;
-      filter: drop-shadow(0 10px 18px rgba(0,0,0,.22));
-      animation: floaty 3s ease-in-out infinite;
-    }
-
-    @keyframes floaty {
-      0%,100% { transform: translateY(0px); }
-      50% { transform: translateY(-5px); }
-    }
-
-    .loading-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-      gap: 18px;
-    }
-
-    .skeleton {
-      position: relative;
-      min-height: 190px;
-      border-radius: 24px;
-      overflow: hidden;
-      background:
-        linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02)),
-        rgba(13,18,30,.6);
-      border: 1px solid rgba(255,255,255,.07);
-    }
-
-    .skeleton::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      transform: translateX(-100%);
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,.08), transparent);
-      animation: skeleton 1.4s infinite;
-    }
-
-    @keyframes skeleton {
-      100% { transform: translateX(100%); }
-    }
-
-    @media (max-width: 920px) {
-      .topbar {
-        flex-direction: column;
-        align-items: stretch;
-      }
-      .searchbar {
-        width: 100%;
-        flex-wrap: wrap;
-      }
-      .btn {
-        flex: 1;
-      }
-      .content {
-        height: calc(100% - 230px);
-      }
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>
+html { color-scheme: dark; overflow: hidden; }
+:root {
+--line: rgba(255,255,255,.09);
+--text: #edf4ff;
+--muted: #98a9c7;
+--blue: #5ea2ff;
+--purple: #9b7cff;
+--shadow: 0 18px 50px rgba(0,0,0,.38);
+}
+
+* { box-sizing: border-box; }
+
+body {
+margin: 0;
+color: var(--text);
+font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+background: transparent;
+overflow: hidden;
+}
+
+.overlay {
+position: relative;
+width: 100%;
+height: 100vh;
+padding: 18px;
+overflow: hidden;
+background:
+radial-gradient(circle at 12% 12%, rgba(94,162,255,.20), transparent 24%),
+radial-gradient(circle at 86% 14%, rgba(155,124,255,.18), transparent 24%),
+rgba(2, 6, 18, .42);
+backdrop-filter: blur(18px) saturate(140%);
+-webkit-backdrop-filter: blur(18px) saturate(140%);
+}
+
+.blob,
+.blob::before,
+.blob::after {
+position: absolute;
+border-radius: 999px;
+filter: blur(40px);
+pointer-events: none;
+}
+
+.blob {
+width: 280px;
+height: 280px;
+left: -60px;
+top: -40px;
+background: rgba(91, 168, 255, .18);
+animation: driftA 14s ease-in-out infinite;
+}
+
+.blob::before {
+content: "";
+width: 210px;
+height: 210px;
+left: 980px;
+top: 80px;
+background: rgba(164, 118, 255, .14);
+animation: driftB 16s ease-in-out infinite;
+}
+
+.blob::after {
+content: "";
+width: 240px;
+height: 240px;
+left: 460px;
+top: 520px;
+background: rgba(86, 234, 181, .10);
+animation: driftC 18s ease-in-out infinite;
+}
+
+@keyframes driftA {
+0%,100% { transform: translate3d(0,0,0) scale(1); }
+50% { transform: translate3d(60px,35px,0) scale(1.08); }
+}
+@keyframes driftB {
+0%,100% { transform: translate3d(0,0,0) scale(1); }
+50% { transform: translate3d(-70px,25px,0) scale(1.12); }
+}
+@keyframes driftC {
+0%,100% { transform: translate3d(0,0,0) scale(1); }
+50% { transform: translate3d(35px,-55px,0) scale(1.06); }
+}
+
+.window {
+position: relative;
+width: 100%;
+height: calc(86vh - 6px);
+border-radius: 28px;
+overflow: hidden;
+background: linear-gradient(180deg, rgba(14, 20, 36, .84), rgba(8, 12, 23, .78));
+border: 1px solid rgba(255,255,255,.11);
+box-shadow: var(--shadow);
+backdrop-filter: blur(22px);
+-webkit-backdrop-filter: blur(22px);
+animation: fadeUp .35s ease;
+}
+
+@keyframes fadeUp {
+from { opacity: 0; transform: translateY(10px) scale(.988); }
+to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.shine {
+position: absolute;
+inset: 0 auto auto -20%;
+width: 45%;
+height: 2px;
+background: linear-gradient(90deg, transparent, rgba(255,255,255,.65), transparent);
+opacity: .45;
+animation: shine 5.6s linear infinite;
+}
+
+@keyframes shine {
+from { transform: translateX(-15%); }
+to { transform: translateX(250%); }
+}
+
+.topbar {
+display: flex;
+align-items: center;
+gap: 14px;
+padding: 18px 20px;
+border-bottom: 1px solid var(--line);
+background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.02));
+}
+
+.brand {
+display: flex;
+align-items: center;
+gap: 14px;
+min-width: 220px;
+}
+
+.brand-logo-wrap {
+position: relative;
+width: 54px;
+height: 54px;
+border-radius: 18px;
+display: grid;
+place-items: center;
+background: linear-gradient(180deg, rgba(94,162,255,.18), rgba(155,124,255,.16));
+border: 1px solid rgba(255,255,255,.12);
+box-shadow: 0 12px 30px rgba(74, 120, 255, .20);
+overflow: hidden;
+}
+
+.brand-logo-wrap::after {
+content: "";
+position: absolute;
+inset: -20%;
+background: conic-gradient(from 180deg, transparent, rgba(255,255,255,.18), transparent 35%);
+animation: spin 6s linear infinite;
+}
+
+@keyframes spin {
+from { transform: rotate(0); }
+to { transform: rotate(360deg); }
+}
+
+.brand-logo {
+position: relative;
+z-index: 1;
+width: 34px;
+height: 34px;
+object-fit: contain;
+filter: drop-shadow(0 3px 10px rgba(0,0,0,.35));
+}
+
+.brand-title {
+font-size: 17px;
+font-weight: 800;
+color: #f8fbff;
+letter-spacing: .2px;
+}
+
+.searchbar {
+flex: 1;
+display: flex;
+gap: 10px;
+min-width: 0;
+align-items: center;
+}
+
+.search-shell {
+flex: 1;
+position: relative;
+min-width: 0;
+}
+
+.search-shell::before {
+content: "⌕";
+position: absolute;
+left: 14px;
+top: 50%;
+transform: translateY(-50%);
+color: #9bb8eb;
+font-size: 15px;
+opacity: .9;
+pointer-events: none;
+}
+
+.searchbar input {
+width: 100%;
+height: 50px;
+border-radius: 16px;
+border: 1px solid rgba(255,255,255,.09);
+background: rgba(6, 10, 19, .42);
+color: white;
+padding: 0 16px 0 40px;
+outline: none;
+font-size: 14px;
+transition: .2s ease;
+}
+
+.searchbar input:focus {
+border-color: rgba(94,162,255,.45);
+box-shadow: 0 0 0 4px rgba(94,162,255,.12);
+background: rgba(7, 12, 24, .55);
+}
+
+.btn {
+height: 50px;
+border-radius: 16px;
+border: 1px solid rgba(255,255,255,.09);
+padding: 0 16px;
+color: white;
+cursor: pointer;
+font-weight: 800;
+font-size: 13px;
+background: rgba(255,255,255,.045);
+transition: transform .16s ease, background .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+
+.btn:hover {
+transform: translateY(-1px);
+background: rgba(255,255,255,.07);
+border-color: rgba(255,255,255,.14);
+}
+
+.btn-primary {
+background: linear-gradient(135deg, #3b82f6, #2563eb);
+border-color: rgba(108, 164, 255, .45);
+box-shadow: 0 14px 28px rgba(37,99,235,.28);
+}
+
+.meta {
+display: flex;
+align-items: center;
+justify-content: space-between;
+gap: 12px;
+padding: 12px 20px;
+border-bottom: 1px solid rgba(255,255,255,.05);
+color: var(--muted);
+font-size: 13px;
+background: rgba(255,255,255,.02);
+}
+
+.status-wrap {
+display: inline-flex;
+align-items: center;
+gap: 10px;
+min-width: 0;
+}
+
+.status-dot {
+width: 9px;
+height: 9px;
+border-radius: 999px;
+background: var(--blue);
+box-shadow: 0 0 18px rgba(94,162,255,.8);
+animation: pulse 1.3s ease-in-out infinite;
+flex-shrink: 0;
+}
+
+@keyframes pulse {
+0%,100% { transform: scale(.88); opacity: .72; }
+50% { transform: scale(1.2); opacity: 1; }
+}
+
+.pill {
+display: inline-flex;
+align-items: center;
+gap: 8px;
+border-radius: 999px;
+padding: 9px 13px;
+background: rgba(255,255,255,.05);
+border: 1px solid rgba(255,255,255,.06);
+color: #dbe7ff;
+}
+
+.filters {
+display: flex;
+gap: 10px;
+padding: 12px 20px 0;
+flex-wrap: wrap;
+}
+
+.filter-chip {
+border: 1px solid rgba(255,255,255,.08);
+background: rgba(255,255,255,.04);
+color: #d7e5ff;
+height: 38px;
+padding: 0 14px;
+border-radius: 999px;
+cursor: pointer;
+font-size: 12px;
+font-weight: 800;
+transition: .18s ease;
+}
+
+.filter-chip:hover {
+background: rgba(255,255,255,.08);
+transform: translateY(-1px);
+}
+
+.filter-chip.active {
+background: linear-gradient(135deg, rgba(59,130,246,.22), rgba(147,51,234,.18));
+border-color: rgba(94,162,255,.32);
+color: #ffffff;
+box-shadow: 0 8px 20px rgba(59,130,246,.16);
+}
+
+.content {
+position: relative;
+padding: 18px 20px 22px;
+height: calc(100% - 186px);
+overflow: auto;
+scroll-behavior: smooth;
+}
+
+.content::-webkit-scrollbar {
+width: 10px;
+}
+
+.content::-webkit-scrollbar-thumb {
+background: rgba(255,255,255,.10);
+border-radius: 999px;
+}
+
+.grid {
+display: grid;
+grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+gap: 18px;
+}
+
+.card {
+position: relative;
+display: flex;
+gap: 14px;
+padding: 14px;
+min-height: 190px;
+border-radius: 24px;
+background:
+linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.025)),
+rgba(13,18,30,.72);
+border: 1px solid rgba(255,255,255,.08);
+box-shadow: 0 16px 34px rgba(0,0,0,.18);
+transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease, background .18s ease;
+overflow: hidden;
+animation: cardIn .35s ease both;
+}
+
+.card:nth-child(1) { animation-delay: .02s; }
+.card:nth-child(2) { animation-delay: .04s; }
+.card:nth-child(3) { animation-delay: .06s; }
+.card:nth-child(4) { animation-delay: .08s; }
+.card:nth-child(5) { animation-delay: .10s; }
+.card:nth-child(6) { animation-delay: .12s; }
+
+@keyframes cardIn {
+from { opacity: 0; transform: translateY(12px) scale(.985); }
+to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.card::before {
+content: "";
+position: absolute;
+inset: 0;
+background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,.05) 20%, transparent 42%);
+transform: translateX(-120%);
+transition: transform .65s ease;
+pointer-events: none;
+}
+
+.card:hover {
+transform: translateY(-3px);
+border-color: rgba(110, 170, 255, .24);
+box-shadow: 0 24px 40px rgba(0,0,0,.24);
+}
+
+.card:hover::before {
+transform: translateX(140%);
+}
+
+.cover,
+.fallback {
+width: 106px;
+height: 150px;
+border-radius: 18px;
+flex-shrink: 0;
+}
+
+.cover {
+object-fit: cover;
+background: rgba(7,10,18,.55);
+border: 1px solid rgba(255,255,255,.07);
+box-shadow: 0 8px 20px rgba(0,0,0,.22);
+}
+
+.fallback {
+border: 1px solid rgba(255,255,255,.07);
+background:
+radial-gradient(circle at 30% 20%, rgba(94,162,255,.20), transparent 28%),
+linear-gradient(180deg, rgba(20,27,43,.95), rgba(9,12,20,.95));
+display: flex;
+align-items: center;
+justify-content: center;
+color: #8ea2c5;
+font-size: 12px;
+text-align: center;
+padding: 12px;
+}
+
+.info {
+min-width: 0;
+width: 100%;
+display: flex;
+flex-direction: column;
+justify-content: space-between;
+}
+
+.title {
+font-size: 17px;
+font-weight: 800;
+line-height: 1.34;
+margin: 0 0 10px 0;
+color: #f7fbff;
+display: -webkit-box;
+-webkit-line-clamp: 2;
+-webkit-box-orient: vertical;
+overflow: hidden;
+}
+
+.stats {
+display: flex;
+flex-wrap: wrap;
+gap: 8px;
+margin-bottom: 10px;
+}
+
+.chip {
+display: inline-flex;
+align-items: center;
+gap: 8px;
+border-radius: 999px;
+padding: 7px 11px;
+font-size: 12px;
+font-weight: 800;
+border: 1px solid rgba(255,255,255,.06);
+background: rgba(255,255,255,.05);
+color: #d8e4fb;
+}
+
+.chip.ok {
+color: #c8ffe0;
+background: rgba(34,197,94,.11);
+border-color: rgba(34,197,94,.19);
+}
+
+.chip.no {
+color: #ffd0d8;
+background: rgba(239,68,68,.10);
+border-color: rgba(239,68,68,.18);
+}
+
+.chip.source {
+color: #d5e7ff;
+background: rgba(59,130,246,.12);
+border-color: rgba(59,130,246,.18);
+}
+
+.sub {
+color: var(--muted);
+font-size: 12px;
+line-height: 1.45;
+word-break: break-word;
+opacity: .95;
+}
+
+.empty {
+display: flex;
+align-items: center;
+justify-content: center;
+min-height: 380px;
+border-radius: 26px;
+border: 1px dashed rgba(255,255,255,.10);
+background:
+radial-gradient(circle at top, rgba(94,162,255,.08), transparent 36%),
+rgba(255,255,255,.025);
+color: #9db1d3;
+text-align: center;
+padding: 32px;
+animation: fadeUp .3s ease;
+}
+
+.empty-box {
+max-width: 460px;
+}
+
+.empty-logo {
+width: 70px;
+height: 70px;
+object-fit: contain;
+opacity: .94;
+margin-bottom: 14px;
+filter: drop-shadow(0 10px 18px rgba(0,0,0,.22));
+animation: floaty 3s ease-in-out infinite;
+}
+
+@keyframes floaty {
+0%,100% { transform: translateY(0px); }
+50% { transform: translateY(-5px); }
+}
+
+.loading-grid {
+display: grid;
+grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+gap: 18px;
+}
+
+.skeleton {
+position: relative;
+min-height: 190px;
+border-radius: 24px;
+overflow: hidden;
+background:
+linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02)),
+rgba(13,18,30,.6);
+border: 1px solid rgba(255,255,255,.07);
+}
+
+.skeleton::after {
+content: "";
+position: absolute;
+inset: 0;
+transform: translateX(-100%);
+background: linear-gradient(90deg, transparent, rgba(255,255,255,.08), transparent);
+animation: skeleton 1.4s infinite;
+}
+
+@keyframes skeleton {
+100% { transform: translateX(100%); }
+}
+
+@media (max-width: 920px) {
+.topbar {
+flex-direction: column;
+align-items: stretch;
+}
+.searchbar {
+width: 100%;
+flex-wrap: wrap;
+}
+.btn {
+flex: 1;
+}
+.content {
+height: calc(100% - 230px);
+}
+}
+</style>
 </head>
 <body>
-  <div class="overlay">
-    <div class="blob"></div>
+<div class="overlay">
+<div class="blob"></div>
 
-    <div class="window">
-      <div class="shine"></div>
+<div class="window">
+<div class="shine"></div>
 
-      <div class="topbar">
-        <div class="brand">
-          <div class="brand-logo-wrap">
-            <img class="brand-logo" src="${BRAND_ICON}" alt="PT Scans" />
-          </div>
-          <div class="brand-copy">
-            <div class="brand-title">PT Scans Search</div>
-          </div>
-        </div>
+<div class="topbar">
+<div class="brand">
+<div class="brand-logo-wrap">
+<img class="brand-logo" src="${BRAND_ICON}" alt="PT Scans" />
+</div>
+<div class="brand-copy">
+<div class="brand-title">PT Scans Search</div>
+</div>
+</div>
 
-        <div class="searchbar">
-          <div class="search-shell">
-            <input id="query" placeholder="Pesquisar..." />
-          </div>
-          <button id="searchBtn" class="btn btn-primary">Pesquisar</button>
-          <button id="reloadBtn" class="btn">Reload</button>
-          <button id="clearBtn" class="btn">Limpar</button>
-          <button id="closeBtn" class="btn">Fechar</button>
-        </div>
-      </div>
+<div class="searchbar">
+<div class="search-shell">
+<input id="query" placeholder="Pesquisar..." />
+</div>
+<button id="searchBtn" class="btn btn-primary">Pesquisar</button>
+<button id="reloadBtn" class="btn">Reload</button>
+<button id="clearBtn" class="btn">Limpar</button>
+<button id="closeBtn" class="btn">Fechar</button>
+<button id="anilistPinBtn" class="btn">Login AniList (PIN)</button>
+<button id="anilistPastePinBtn" class="btn" style="display:none">Colar PIN</button>
+<button id="anilistLogoutBtn" class="btn" style="display:none">Logout AniList</button>
+<label id="anilistSyncWrap" class="pill" style="margin-left:8px">
+<input id="anilistSyncToggle" type="checkbox" style="margin-right:8px" /> Sincronizar
+</label>
+</div>
+</div>
 
-      <div class="meta">
-        <div class="status-wrap">
-          <div class="status-dot"></div>
-          <div id="statusText">Pronto</div>
-        </div>
-        <div class="pill" id="resultMeta">0 resultados</div>
-      </div>
+<div class="meta">
+<div class="status-wrap">
+<div class="status-dot"></div>
+<div id="statusText">Pronto</div>
+</div>
+<div class="pill" id="resultMeta">0 resultados</div>
+</div>
 
-      <div class="filters" id="sourceFilters"></div>
+<div class="filters" id="sourceFilters"></div>
 
-      <div class="content">
-        <div id="app"></div>
-      </div>
-    </div>
-  </div>
+<div class="content">
+<div id="app"></div>
+</div>
+</div>
+</div>
 
-  <script>
-    const BRAND_ICON = ${JSON.stringify(BRAND_ICON)};
-    const state = {
-      results: [],
-      status: "Pronto",
-      loading: false,
-      query: "",
-      sourceFilter: "all"
-    };
+<script>
+const BRAND_ICON = ${JSON.stringify(BRAND_ICON)};
+const state = {
+results: [],
+status: "Pronto",
+loading: false,
+query: "",
+sourceFilter: "all",
+anilistLibrary: null,
+anilistLoggedIn: false
+};
 
-    function esc(value) {
-      return String(value == null ? "" : value)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-    }
+function esc(value) {
+return String(value == null ? "" : value)
+.replace(/&/g, "&amp;")
+.replace(/</g, "&lt;")
+.replace(/>/g, "&gt;")
+.replace(/"/g, "&quot;")
+.replace(/'/g, "&#039;");
+}
 
-    function renderSkeletons() {
-      return (
-        '<div class="loading-grid">' +
-          Array.from({ length: 6 }).map(() =>
-            '<div class="skeleton"></div>'
-          ).join('') +
-        '</div>'
-      );
-    }
+function renderSkeletons() {
+return (
+'<div class="loading-grid">' +
+Array.from({ length: 6 }).map(() =>
+'<div class="skeleton"></div>'
+).join('') +
+'</div>'
+);
+}
 
-    function getItemSource(item) {
-      if (item.rawSource) return item.rawSource;
-      const rawId = String(item.id || "");
-      const idx = rawId.indexOf(":");
-      return idx !== -1 ? rawId.slice(0, idx) : "unknown";
-    }
+function getItemSource(item) {
+if (item.rawSource) return item.rawSource;
+const rawId = String(item.id || "");
+const idx = rawId.indexOf(":");
+return idx !== -1 ? rawId.slice(0, idx) : "unknown";
+}
 
-    function buildSourceCounts(items) {
-      const counts = {
-        all: items.length,
-        mangaflix: 0,
-        mangalivre: 0,
-        hipercool: 0,
-        tiamanhwa: 0,
-        mangafire: 0
-      };
+function buildSourceCounts(items) {
+const counts = {
+all: items.length,
+mangaflix: 0,
+mangalivre: 0,
+hipercool: 0,
+tiamanhwa: 0,
+mangafire: 0
+};
 
-      items.forEach((item) => {
-        const src = getItemSource(item);
-        if (counts[src] != null) counts[src]++;
-      });
+items.forEach((item) => {
+const src = getItemSource(item);
+if (counts[src] != null) counts[src]++;
+});
 
-      return counts;
-    }
+return counts;
+}
 
-    function renderFilters(items) {
-      const wrap = document.getElementById("sourceFilters");
-      if (!wrap) return;
+function renderFilters(items) {
+const wrap = document.getElementById("sourceFilters");
+if (!wrap) return;
 
-      const counts = buildSourceCounts(items);
+const counts = buildSourceCounts(items);
 
-      const defs = [
-        { key: "all", label: "Todos" },
-        { key: "mangaflix", label: "MangaFlix" },
-        { key: "mangalivre", label: "MangaLivre" },
-        { key: "hipercool", label: "HiperCool" },
-        { key: "tiamanhwa", label: "TiaManhwa" },
-        { key: "mangafire", label: "MangaFire" }
-      ];
+const defs = [
+{ key: "all", label: "Todos" },
+{ key: "mangaflix", label: "MangaFlix" },
+{ key: "mangalivre", label: "MangaLivre" },
+{ key: "hipercool", label: "HiperCool" },
+{ key: "tiamanhwa", label: "TiaManhwa" },
+{ key: "mangafire", label: "MangaFire" }
+];
 
-      wrap.innerHTML = defs.map((item) => {
-        const active = state.sourceFilter === item.key ? "active" : "";
-        const count = counts[item.key] || 0;
+wrap.innerHTML = defs.map((item) => {
+const active = state.sourceFilter === item.key ? "active" : "";
+const count = counts[item.key] || 0;
 
-        return \`
-          <button
-            class="filter-chip \${active}"
-            data-source="\${esc(item.key)}"
-            type="button"
-          >
-            \${esc(item.label)} (\${count})
-          </button>
-        \`;
-      }).join("");
+return `
+<button
+class="filter-chip ${active}"
+data-source="${esc(item.key)}"
+type="button"
+>
+${esc(item.label)} (${count})
+</button>
+`;
+}).join("");
 
-      wrap.querySelectorAll(".filter-chip").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          state.sourceFilter = btn.dataset.source || "all";
-          render();
-        });
-      });
-    }
+wrap.querySelectorAll(".filter-chip").forEach((btn) => {
+btn.addEventListener("click", () => {
+state.sourceFilter = btn.dataset.source || "all";
+render();
+});
+});
+}
 
-    function render() {
-      const app = document.getElementById("app");
-      const statusText = document.getElementById("statusText");
-      const resultMeta = document.getElementById("resultMeta");
-      const input = document.getElementById("query");
+function renderLibrary() {
+if (!state.anilistLibrary || !state.anilistLibrary.collection || !Array.isArray(state.anilistLibrary.collection.lists)) return "";
+const currentEntries = [];
+state.anilistLibrary.collection.lists.forEach((l) => {
+(l.entries || []).forEach((e) => {
+if (e.status === "CURRENT") currentEntries.push({ entry: e, listName: l.name });
+});
+});
+if (!currentEntries.length) return "";
 
-      statusText.textContent = state.status || "Pronto";
+return '<div style="margin-bottom:18px"><div style="font-weight:800;font-size:15px;margin-bottom:8px;color:#dbe7ff">Minha Biblioteca</div>' +
+'<div class="grid">' +
+currentEntries.map((obj) => {
+const e = obj.entry;
+const lName = obj.listName || "";
+const media = e.media || {};
+const cover = media.coverImage && media.coverImage.large ? '<img class="cover" src="' + esc(media.coverImage.large) + '" />' : '<div class="fallback">Sem capa</div>';
+return (
+'<div class="card">' +
+cover +
+'<div class="info">' +
+'<div>' +
+'<div class="title">' + esc(media.title && (media.title.romaji || media.title.english || media.title.native) || "—") + '</div>' +
+'<div class="stats">' +
+'<div class="chip source">A acompanhar</div>' +
+'<div class="chip ok">Progresso: ' + esc(e.progress || 0) + '</div>' +
+'<div class="chip">Lista: ' + esc(lName || "-") + '</div>' +
+'</div>' +
+'</div>' +
+'<div class="sub"><a href="' + esc(media.siteUrl || "#") + '" target="_blank" rel="noopener noreferrer" style="color:#9db1d3">Ver no AniList</a></div>' +
+'</div>' +
+'</div>'
+);
+}).join("") +
+'</div></div>';
+}
 
-      if (document.activeElement !== input) {
-        input.value = state.query || "";
-      }
+function render() {
+const app = document.getElementById("app");
+const statusText = document.getElementById("statusText");
+const resultMeta = document.getElementById("resultMeta");
+const input = document.getElementById("query");
 
-      const allResults = Array.isArray(state.results) ? state.results : [];
-      const filteredResults =
-        state.sourceFilter === "all"
-          ? allResults
-          : allResults.filter((item) => getItemSource(item) === state.sourceFilter);
+statusText.textContent = state.status || "Pronto";
 
-      resultMeta.textContent = filteredResults.length + " resultados";
+if (document.activeElement !== input) {
+input.value = state.query || "";
+}
 
-      renderFilters(allResults);
+const allResults = Array.isArray(state.results) ? state.results : [];
+const filteredResults =
+state.sourceFilter === "all"
+? allResults
+: allResults.filter((item) => getItemSource(item) === state.sourceFilter);
 
-      if (state.loading && allResults.length === 0) {
-        app.innerHTML = renderSkeletons();
-        return;
-      }
+resultMeta.textContent = filteredResults.length + " resultados";
 
-      if (filteredResults.length === 0) {
-        app.innerHTML = [
-          '<div class="empty">',
-            '<div class="empty-box">',
-              '<img class="empty-logo" src="' + esc(BRAND_ICON) + '" alt="PT Scans" />',
-              '<div style="font-size:18px;font-weight:800;color:#f4f8ff;margin-bottom:8px;">PT Scans</div>',
-              '<div style="font-size:13px;line-height:1.6;color:#9db1d3;">' +
-                (allResults.length === 0
-                  ? 'Pesquisa um título para começar.'
-                  : 'Não há resultados para este filtro.') +
-              '</div>',
-            '</div>',
-          '</div>'
-        ].join("");
-        return;
-      }
+renderFilters(allResults);
 
-      app.innerHTML =
-        '<div class="grid">' +
-        filteredResults.map((item) => {
-          const cover = item.image
-            ? '<img class="cover" src="' + esc(item.image) + '" alt="' + esc(item.title) + '" />'
-            : '<div class="fallback">Sem capa</div>';
+if (state.loading && allResults.length === 0) {
+app.innerHTML = renderSkeletons();
+return;
+}
 
-          return (
-            '<div class="card">' +
-              cover +
-              '<div class="info">' +
-                '<div>' +
-                  '<div class="title">' + esc(item.title) + '</div>' +
-                  '<div class="stats">' +
-                    '<div class="chip source">' + esc(item.source || getItemSource(item)) + '</div>' +
-                    '<div class="chip ' + (item.hasChapters ? 'ok' : 'no') + '">Capítulos: ' + (item.hasChapters ? 'Sim' : 'Não') + '</div>' +
-                    '<div class="chip">Total: ' + esc(item.chapterCount) + '</div>' +
-                    '<div class="chip">Último: ' + esc(item.latestChapter || "-") + '</div>' +
-                    (item.year ? '<div class="chip">Ano: ' + esc(item.year) + '</div>' : '') +
-                  '</div>' +
-                '</div>' +
-                '<div class="sub">' + esc(item.id || "") + '</div>' +
-              '</div>' +
-            '</div>'
-          );
-        }).join("") +
-        '</div>';
-    }
+// Biblioteca (se houver)
+const libraryHtml = renderLibrary();
 
-    document.getElementById("searchBtn").addEventListener("click", () => {
-      window.webview.send("search", document.getElementById("query").value);
-    });
+if (filteredResults.length === 0 && !libraryHtml) {
+app.innerHTML = [
+'<div class="empty">',
+'<div class="empty-box">',
+'<img class="empty-logo" src="' + esc(BRAND_ICON) + '" alt="PT Scans" />',
+'<div style="font-size:18px;font-weight:800;color:#f4f8ff;margin-bottom:8px;">PT Scans</div>',
+'<div style="font-size:13px;line-height:1.6;color:#9db1d3;">' +
+(allResults.length === 0
+? 'Pesquisa um título para começar.'
+: 'Não há resultados para este filtro.') +
+'</div>',
+'</div>',
+'</div>'
+].join("");
+return;
+}
 
-    document.getElementById("query").addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        window.webview.send("search", document.getElementById("query").value);
-      }
-    });
+const resultsHtml = filteredResults.length ? (
+'<div class="grid">' +
+filteredResults.map((item) => {
+const cover = item.image
+? '<img class="cover" src="' + esc(item.image) + '" alt="' + esc(item.title) + '" />'
+: '<div class="fallback">Sem capa</div>';
 
-    document.getElementById("clearBtn").addEventListener("click", () => {
-      document.getElementById("query").value = "";
-      state.sourceFilter = "all";
-      window.webview.send("clear");
-    });
+// se item.ani existe, mostra chip adicional de progresso
+const aniChip = item.ani ? ('<div class="chip ok">Progresso AniList: ' + esc(item.ani.progress || 0) + '</div>') : '';
 
-    document.getElementById("closeBtn").addEventListener("click", () => {
-      window.webview.send("hide");
-    });
+return (
+'<div class="card">' +
+cover +
+'<div class="info">' +
+'<div>' +
+'<div class="title">' + esc(item.title) + '</div>' +
+'<div class="stats">' +
+'<div class="chip source">' + esc(item.source || getItemSource(item)) + '</div>' +
+'<div class="chip ' + (item.hasChapters ? 'ok' : 'no') + '">Capítulos: ' + (item.hasChapters ? 'Sim' : 'Não') + '</div>' +
+'<div class="chip">Total: ' + esc(item.chapterCount) + '</div>' +
+'<div class="chip">Último: ' + esc(item.latestChapter || "-") + '</div>' +
+(item.year ? '<div class="chip">Ano: ' + esc(item.year) + '</div>' : '') +
+aniChip +
+'</div>' +
+'</div>' +
+'<div class="sub">' + esc(item.id || "") + '</div>' +
+'</div>' +
+'</div>'
+);
+}).join("") +
+'</div>'
+) : "";
 
-    document.getElementById("reloadBtn").addEventListener("click", () => {
-      window.webview.send("reloadProvider");
-    });
+app.innerHTML = (libraryHtml ? libraryHtml : "") + resultsHtml;
+}
 
-    window.webview.on("results", (value) => {
-      state.results = value || [];
-      render();
-    });
+document.getElementById("searchBtn").addEventListener("click", () => {
+window.webview.send("search", document.getElementById("query").value);
+});
 
-    window.webview.on("status", (value) => {
-      state.status = value || "Pronto";
-      render();
-    });
+document.getElementById("query").addEventListener("keydown", (e) => {
+if (e.key === "Enter") {
+window.webview.send("search", document.getElementById("query").value);
+}
+});
 
-    window.webview.on("loading", (value) => {
-      state.loading = !!value;
-      render();
-    });
+document.getElementById("clearBtn").addEventListener("click", () => {
+document.getElementById("query").value = "";
+state.sourceFilter = "all";
+window.webview.send("clear");
+});
 
-    window.webview.on("query", (value) => {
-      state.query = value || "";
-      render();
-    });
+document.getElementById("closeBtn").addEventListener("click", () => {
+window.webview.send("hide");
+});
 
-    render();
-  </script>
+document.getElementById("reloadBtn").addEventListener("click", () => {
+window.webview.send("reloadProvider");
+});
+
+document.getElementById("anilistPinBtn").addEventListener("click", () => {
+window.webview.send("anilistStartPin");
+// mostrar botão colar PIN
+document.getElementById("anilistPastePinBtn").style.display = "";
+});
+
+document.getElementById("anilistPastePinBtn").addEventListener("click", async () => {
+const pin = prompt("Colar PIN de autorização AniList:");
+if (pin) {
+window.webview.send("anilistSubmitPin", pin);
+}
+});
+
+document.getElementById("anilistLogoutBtn").addEventListener("click", () => {
+window.webview.send("anilistLogout");
+});
+
+document.getElementById("anilistSyncToggle").addEventListener("change", (e) => {
+window.webview.send("anilistSyncToggle", !!e.target.checked);
+});
+
+window.webview.on("results", (value) => {
+state.results = value || [];
+render();
+});
+
+window.webview.on("status", (value) => {
+state.status = value || "Pronto";
+render();
+});
+
+window.webview.on("loading", (value) => {
+state.loading = !!value;
+render();
+});
+
+window.webview.on("query", (value) => {
+state.query = value || "";
+render();
+});
+
+window.webview.on("anilistLibrary", (value) => {
+state.anilistLibrary = value || null;
+render();
+});
+
+window.webview.on("anilistAuthState", (isLoggedIn) => {
+state.anilistLoggedIn = !!isLoggedIn;
+document.getElementById("anilistPinBtn").style.display = state.anilistLoggedIn ? "none" : "";
+document.getElementById("anilistPastePinBtn").style.display = state.anilistLoggedIn ? "none" : "";
+document.getElementById("anilistLogoutBtn").style.display = state.anilistLoggedIn ? "" : "none";
+});
+
+window.webview.on("anilistError", (msg) => {
+alert("Erro AniList: " + String(msg || ""));
+});
+
+window.webview.on("showPastePin", (v) => {
+document.getElementById("anilistPastePinBtn").style.display = v ? "" : "none";
+});
+
+render();
+</script>
 </body>
 </html>
-    `);
-  });
+`);
+});
 }
