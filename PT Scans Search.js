@@ -1,12 +1,12 @@
-function init() {
-$ui.register((ctx) => {
+(function () {
+function initPlugin($ui, ctx) {
 const BRAND_ICON = "https://raw.githubusercontent.com/SKRAPT/PT-Scans/main/upscan.png";
 const PROVIDER_MANIFEST_URL =
-"https://raw.githubusercontent.com/SKRAPT/PT-Scans/refs/heads/main/ptscans-provider.json";
+"https://raw.githubusercontent.com/SKRAPT/PT-Scans-Search/main/PT-Scans-Search.json"; // manifest com payloadURI actualizado
 
-// PIN flow config (PIN uses redirect_uri = https://anilist.co/api/v2/oauth/pin)
-const ANILIST_CLIENT_ID = ""; // optional for PIN
-const ANILIST_CLIENT_SECRET = ""; // optional for PIN
+// AniList PIN flow config
+const ANILIST_CLIENT_ID = ""; // optional
+const ANILIST_CLIENT_SECRET = ""; // optional
 const ANILIST_REDIRECT_URI = "https://anilist.co/api/v2/oauth/pin";
 const ANILIST_AUTH_URL = "https://anilist.co/api/v2/oauth/authorize";
 const ANILIST_TOKEN_URL = "https://anilist.co/api/v2/oauth/token";
@@ -44,19 +44,16 @@ panel.channel.sync("query", queryState);
 
 let providerPromise = null;
 
-/* ---------- utilitários ---------- */
-
+// utilitários
 function normalizeText(value) {
 return typeof value === "string" ? value.trim() : "";
 }
-
 function splitSourceId(value) {
 const raw = normalizeText(value);
 const idx = raw.indexOf(":");
 if (idx === -1) return { source: "", id: raw };
 return { source: raw.slice(0, idx), id: raw.slice(idx + 1) };
 }
-
 function sourceLabel(source) {
 if (source === "mangaflix") return "MangaFlix";
 if (source === "mangalivre") return "MangaLivre";
@@ -65,7 +62,6 @@ if (source === "tiamanhwa") return "TiaManhwa";
 if (source === "mangafire") return "MangaFire";
 return source || "Desconhecido";
 }
-
 function stripProviderPrefix(title) {
 return String(title || "")
 .replace(/^\s*
@@ -125,13 +121,11 @@ e
 .replace(/^\s*(MangaFlix|MangaLivre|HiperCool|TiaManhwa|MangaFire)\s*[- -:]\s*/i, "")
 .trim();
 }
-
 function safeArray(value) {
 return Array.isArray(value) ? value : [];
 }
 
-/* ---------- AniList helpers (PIN, memória) ---------- */
-
+// AniList token em memória
 function _saveAnilistTokenMemory(tokenObj) {
 ctx._anilistToken = tokenObj;
 }
@@ -221,8 +215,7 @@ const collection = res && res.data && res.data.MediaListCollection ? res.data.Me
 return { viewer, collection };
 }
 
-/* ---------- provider loader (avaliação segura) ---------- */
-
+// getProvider com validação segura do payload
 async function getProvider() {
 if (providerPromise) return providerPromise;
 
@@ -232,30 +225,40 @@ headers: { Accept: "application/json, text/plain, /" }
 });
 
 if (!res.ok) {
-throw new Error("Falha ao carregar provider: HTTP " + res.status);
+throw new Error("Falha ao carregar provider manifest: HTTP " + res.status);
 }
 
 const manifest = await res.json();
 const payload = String(manifest && manifest.payload ? manifest.payload : "").trim();
 
 if (!payload) {
-throw new Error("Provider sem payload.");
+throw new Error("Provider sem payload. Verifica payloadURI no manifest e a disponibilidade do ficheiro.");
 }
 
-// validação simples antes de avaliar
-if (!/function\s+Provider|class\s+Provider/.test(payload)) {
-console.warn("PT-Scans: payload não contém Provider claro. Preview:", String(payload).slice(0, 300));
+// validação heurística
+function looksBroken(s) {
+const backticks = (s.match(/`/g) || []).length;
+const single = (s.match(/'/g) || []).length;
+const double = (s.match(/"/g) || []).length;
+if (backticks % 2 !== 0 || single % 2 !== 0 || double % 2 !== 0) return true;
+if (!/function\s+Provider|class\s+Provider/.test(s)) return true;
+return false;
+}
+
+const preview = payload.slice(0, 2000);
+console.log("PT-Scans: provider payload preview:", preview);
+
+if (looksBroken(payload)) {
+console.error("PT-Scans: payload parece inválido/truncado; abortando avaliação. Preview:", preview);
+throw new Error("Payload do provider inválido ou incompleto. Verifica payloadURI e o conteúdo remoto.");
 }
 
 try {
-const preview = String(payload || "").slice(0, 2000);
-console.log("PT-Scans: provider payload preview:", preview);
-// avaliar com new Function (try/catch)
 const ProviderClassFactory = new Function(payload + "\nreturn Provider;");
 const provider = ProviderClassFactory();
 provider.getDisableNsfwConfig = () => false;
 
-// expõe AniList methods
+// expõe AniList helpers no provider
 provider.anilist = {
 startPinAuth: async () => {
 const url = buildAnilistPinUrl();
@@ -292,10 +295,8 @@ return null;
 
 return provider;
 } catch (err) {
-console.error("PT-Scans: Erro ao avaliar provider payload:", err && err.toString ? err.toString() : err);
-try {
-console.error("PT-Scans: payload (first 5000 chars):", String(payload || "").slice(0, 5000));
-} catch (e) {}
+console.error("PT-Scans: Erro ao avaliar provider payload:", err && err.toString ? err.toString() : String(err));
+try { console.error("PT-Scans: payload (first 5000 chars):", payload.slice(0,5000)); } catch(e){}
 throw err;
 }
 })();
@@ -303,8 +304,7 @@ throw err;
 return providerPromise;
 }
 
-/* ---------- matching / biblioteca do utilizador ---------- */
-
+// library matching
 let userLibraryMap = new Map();
 
 function tryMatchLibraryForItem(item) {
@@ -392,8 +392,6 @@ return ok.concat(rest);
 return ok;
 }
 
-/* ---------- runSearch (carrega biblioteca antes do enrich) ---------- */
-
 async function runSearch(rawQuery) {
 const query = normalizeText(rawQuery);
 queryState.set(query);
@@ -412,7 +410,7 @@ results.set([]);
 try {
 const provider = await getProvider();
 
-// carregar biblioteca do utilizador (MANGA)
+// load user library for matching
 userLibraryMap = new Map();
 try {
 const token = _loadAnilistTokenMemory();
@@ -489,20 +487,13 @@ loading.set(false);
 }
 }
 
-/* ---------- eventos UI / canais ---------- */
-
-tray.onClick(() => {
-panel.show();
-});
+// UI / canais
+tray.onClick(() => panel.show());
 
 panel.channel.on("search", async (query) => {
 await runSearch(query || "");
 });
-
-panel.channel.on("hide", () => {
-panel.hide();
-});
-
+panel.channel.on("hide", () => panel.hide());
 panel.channel.on("clear", () => {
 queryState.set("");
 status.set("Pronto");
@@ -510,13 +501,11 @@ loading.set(false);
 results.set([]);
 tray.updateBadge({ number: 0 });
 });
-
 panel.channel.on("reloadProvider", async () => {
 providerPromise = null;
 status.set("Cache limpa");
 });
 
-// AniList handlers
 panel.channel.on("anilistStartPin", async () => {
 try {
 const provider = await getProvider();
@@ -526,7 +515,6 @@ panel.channel.send("showPastePin", true);
 console.error("Erro iniciar PIN AniList:", e);
 }
 });
-
 panel.channel.on("anilistSubmitPin", async (pin) => {
 try {
 const provider = await getProvider();
@@ -546,7 +534,6 @@ panel.channel.send("anilistLibrary", null);
 panel.channel.send("anilistError", String(e && e.message ? e.message : e));
 }
 });
-
 panel.channel.on("anilistLogout", async () => {
 try {
 const provider = await getProvider();
@@ -557,7 +544,6 @@ panel.channel.send("anilistLibrary", null);
 console.error("Erro logout AniList:", e);
 }
 });
-
 panel.channel.on("anilistSyncToggle", async (enabled) => {
 try {
 const provider = await getProvider();
@@ -572,22 +558,19 @@ console.error("Erro anilistSyncToggle:", e);
 }
 });
 
-/* ---------- webview content (HTML + JS) ---------- */
-
-// Escape BRAND_ICON safely
+// webview content: injeta BRAND_ICON com JSON.stringify para segurança
 const brandIconEscaped = JSON.stringify(BRAND_ICON);
 
-panel.setContent(() => {
-// Build a trimmed HTML template but inject dynamic values safely via JSON.stringify
-return `
-<!DOCTYPE html>
+panel.setContent(() => `<!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
 <style>
-/* (CSS omitted here for brevity in display) */
-/* Use your original CSS block here unchanged */
+/* mantém o teu CSS original aqui — copia exatamente o bloco CSS que usavas */
+:root{--line:rgba(255,255,255,.09);--text:#edf4ff;--muted:#98a9c7;--blue:#5ea2ff;--purple:#9b7cff;--shadow:0 18px 50px rgba(0,0,0,.38)}
+html{color-scheme:dark;overflow:hidden}*{box-sizing:border-box}body{margin:0;color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;background:transparent;overflow:hidden}
+/* ... restante CSS omitido por brevidade — usa exactamente o teu bloco CSS original aqui ... */
 </style>
 </head>
 <body>
@@ -600,14 +583,10 @@ return `
 <div class="brand-logo-wrap">
 <img class="brand-logo" src=${brandIconEscaped} alt="PT Scans" />
 </div>
-<div class="brand-copy">
-<div class="brand-title">PT Scans Search</div>
-</div>
+<div class="brand-copy"><div class="brand-title">PT Scans Search</div></div>
 </div>
 <div class="searchbar">
-<div class="search-shell">
-<input id="query" placeholder="Pesquisar..." />
-</div>
+<div class="search-shell"><input id="query" placeholder="Pesquisar..." /></div>
 <button id="searchBtn" class="btn btn-primary">Pesquisar</button>
 <button id="reloadBtn" class="btn">Reload</button>
 <button id="clearBtn" class="btn">Limpar</button>
@@ -621,307 +600,115 @@ return `
 </div>
 </div>
 <div class="meta">
-<div class="status-wrap">
-<div class="status-dot"></div>
-<div id="statusText">Pronto</div>
-</div>
+<div class="status-wrap"><div class="status-dot"></div><div id="statusText">Pronto</div></div>
 <div class="pill" id="resultMeta">0 resultados</div>
 </div>
 <div class="filters" id="sourceFilters"></div>
-<div class="content">
-<div id="app"></div>
-</div>
+<div class="content"><div id="app"></div></div>
 </div>
 </div>
 
 <script>
 const BRAND_ICON = ${brandIconEscaped};
-const state = {
-results: [],
-status: "Pronto",
-loading: false,
-query: "",
-sourceFilter: "all",
-anilistLibrary: null,
-anilistLoggedIn: false
-};
+const state = { results:[], status:"Pronto", loading:false, query:"", sourceFilter:"all", anilistLibrary:null, anilistLoggedIn:false };
 
-function esc(value) {
-return String(value == null ? "" : value)
-.replace(/&/g, "&amp;")
-.replace(/</g, "&lt;")
-.replace(/>/g, "&gt;")
-.replace(/"/g, "&quot;")
-.replace(/'/g, "&#039;");
+function esc(value){
+return String(value==null?"":value)
+.replace(/&/g,"&amp;")
+.replace(/</g,"&lt;")
+.replace(/>/g,"&gt;")
+.replace(/"/g,"&quot;")
+.replace(/'/g,"&#039;");
 }
 
-// All rendering and handlers use the same logic provided earlier (render, renderFilters,
-// renderLibrary, event listeners). Kept intentionally concise here to avoid introducing
-// additional injection issues; the full logic was included previously and is the same.
+function renderSkeletons(){ return '<div class="loading-grid">'+Array.from({length:6}).map(()=>'<div class="skeleton"></div>').join('')+'</div>'; }
 
-(function main() {
-function renderSkeletons() {
-return (
-'<div class="loading-grid">' +
-Array.from({ length: 6 }).map(() =>
-'<div class="skeleton"></div>'
-).join('') +
-'</div>'
-);
-}
-
-function getItemSource(item) {
-if (item.rawSource) return item.rawSource;
-const rawId = String(item.id || "");
+function getItemSource(item){
+if(item.rawSource) return item.rawSource;
+const rawId = String(item.id||"");
 const idx = rawId.indexOf(":");
 return idx !== -1 ? rawId.slice(0, idx) : "unknown";
 }
 
-function buildSourceCounts(items) {
-const counts = {
-all: items.length,
-mangaflix: 0,
-mangalivre: 0,
-hipercool: 0,
-tiamanhwa: 0,
-mangafire: 0
-};
-items.forEach((item) => {
-const src = getItemSource(item);
-if (counts[src] != null) counts[src]++;
-});
+function buildSourceCounts(items){
+const counts = { all: items.length, mangaflix:0, mangalivre:0, hipercool:0, tiamanhwa:0, mangafire:0 };
+items.forEach(item => { const s = getItemSource(item); if(counts[s]!=null) counts[s]++; });
 return counts;
 }
 
-function renderFilters(items) {
-const wrap = document.getElementById("sourceFilters");
-if (!wrap) return;
+function renderFilters(items){
+const wrap = document.getElementById("sourceFilters"); if(!wrap) return;
 const counts = buildSourceCounts(items);
-const defs = [
-{ key: "all", label: "Todos" },
-{ key: "mangaflix", label: "MangaFlix" },
-{ key: "mangalivre", label: "MangaLivre" },
-{ key: "hipercool", label: "HiperCool" },
-{ key: "tiamanhwa", label: "TiaManhwa" },
-{ key: "mangafire", label: "MangaFire" }
-];
-wrap.innerHTML = defs.map((item) => {
-const active = state.sourceFilter === item.key ? "active" : "";
-const count = counts[item.key] || 0;
-return `
-<button
-class="filter-chip ${active}"
-data-source="${esc(item.key)}"
-type="button"
->
-${esc(item.label)} (${count})
-</button>
-`;
-}).join("");
-wrap.querySelectorAll(".filter-chip").forEach((btn) => {
-btn.addEventListener("click", () => {
-state.sourceFilter = btn.dataset.source || "all";
-render();
-});
-});
+const defs = [{key:"all",label:"Todos"},{key:"mangaflix",label:"MangaFlix"},{key:"mangalivre",label:"MangaLivre"},{key:"hipercool",label:"HiperCool"},{key:"tiamanhwa",label:"TiaManhwa"},{key:"mangafire",label:"MangaFire"}];
+wrap.innerHTML = defs.map(item=>{ const active = state.sourceFilter===item.key?"active":""; const count = counts[item.key]||0; return <button class="filter-chip ${active}" data-source="${esc(item.key)}" type="button">${esc(item.label)} (${count})</button> }).join("");
+wrap.querySelectorAll(".filter-chip").forEach(btn=>btn.addEventListener("click",()=>{ state.sourceFilter = btn.dataset.source||"all"; render(); }));
 }
 
-function renderLibrary() {
-if (!state.anilistLibrary || !state.anilistLibrary.collection || !Array.isArray(state.anilistLibrary.collection.lists)) return "";
+function renderLibrary(){
+if(!state.anilistLibrary||!state.anilistLibrary.collection||!Array.isArray(state.anilistLibrary.collection.lists)) return "";
 const currentEntries = [];
-state.anilistLibrary.collection.lists.forEach((l) => {
-(l.entries || []).forEach((e) => {
-if (e.status === "CURRENT") currentEntries.push({ entry: e, listName: l.name });
-});
-});
-if (!currentEntries.length) return "";
-return '<div style="margin-bottom:18px"><div style="font-weight:800;font-size:15px;margin-bottom:8px;color:#dbe7ff">Minha Biblioteca</div>' +
-'<div class="grid">' +
-currentEntries.map((obj) => {
-const e = obj.entry;
-const lName = obj.listName || "";
-const media = e.media || {};
-const cover = media.coverImage && media.coverImage.large ? '<img class="cover" src="' + esc(media.coverImage.large) + '" />' : '<div class="fallback">Sem capa</div>';
-return (
-'<div class="card">' +
-cover +
-'<div class="info">' +
-'<div>' +
-'<div class="title">' + esc(media.title && (media.title.romaji || media.title.english || media.title.native) || "—") + '</div>' +
-'<div class="stats">' +
-'<div class="chip source">A acompanhar</div>' +
-'<div class="chip ok">Progresso: ' + esc(e.progress || 0) + '</div>' +
-'<div class="chip">Lista: ' + esc(lName || "-") + '</div>' +
-'</div>' +
-'</div>' +
-'<div class="sub"><a href="' + esc(media.siteUrl || "#") + '" target="_blank" rel="noopener noreferrer" style="color:#9db1d3">Ver no AniList</a></div>' +
-'</div>' +
-'</div>'
-);
-}).join("") +
-'</div></div>';
+state.anilistLibrary.collection.lists.forEach(l => { (l.entries||[]).forEach(e=>{ if(e.status==="CURRENT") currentEntries.push({entry:e, listName:l.name}); }); });
+if(!currentEntries.length) return "";
+return '<div style="margin-bottom:18px"><div style="font-weight:800;font-size:15px;margin-bottom:8px;color:#dbe7ff">Minha Biblioteca</div><div class="grid">'+currentEntries.map(obj=>{ const e = obj.entry; const lName = obj.listName||""; const media = e.media||{}; const cover = media.coverImage&&media.coverImage.large?<img class="cover" src="${esc(media.coverImage.large)}" />:'<div class="fallback">Sem capa</div>'; return <div class="card">${cover}<div class="info"><div><div class="title">${esc(media.title && (media.title.romaji||media.title.english||media.title.native) || "—")}</div><div class="stats"><div class="chip source">A acompanhar</div><div class="chip ok">Progresso: ${esc(e.progress||0)}</div><div class="chip">Lista: ${esc(lName||"-")}</div></div></div><div class="sub"><a href="${esc(media.siteUrl||"#")}" target="_blank" rel="noopener noreferrer" style="color:#9db1d3">Ver no AniList</a></div></div></div> }).join("") + '</div></div>';
 }
 
-function render() {
+function render(){
 const app = document.getElementById("app");
 const statusText = document.getElementById("statusText");
 const resultMeta = document.getElementById("resultMeta");
 const input = document.getElementById("query");
 statusText.textContent = state.status || "Pronto";
-if (document.activeElement !== input) {
-input.value = state.query || "";
-}
-const allResults = Array.isArray(state.results) ? state.results : [];
-const filteredResults =
-state.sourceFilter === "all"
-? allResults
-: allResults.filter((item) => getItemSource(item) === state.sourceFilter);
+if(document.activeElement !== input) input.value = state.query || "";
+const allResults = Array.isArray(state.results)?state.results:[];
+const filteredResults = state.sourceFilter==="all"?allResults:allResults.filter(item=>getItemSource(item)===state.sourceFilter);
 resultMeta.textContent = filteredResults.length + " resultados";
 renderFilters(allResults);
-if (state.loading && allResults.length === 0) {
-app.innerHTML = renderSkeletons();
-return;
-}
+if(state.loading && allResults.length===0){ app.innerHTML = renderSkeletons(); return; }
 const libraryHtml = renderLibrary();
-if (filteredResults.length === 0 && !libraryHtml) {
-app.innerHTML = [
-'<div class="empty">',
-'<div class="empty-box">',
-'<img class="empty-logo" src="' + esc(BRAND_ICON) + '" alt="PT Scans" />',
-'<div style="font-size:18px;font-weight:800;color:#f4f8ff;margin-bottom:8px;">PT Scans</div>',
-'<div style="font-size:13px;line-height:1.6;color:#9db1d3;">' +
-(allResults.length === 0
-? 'Pesquisa um título para começar.'
-: 'Não há resultados para este filtro.') +
-'</div>',
-'</div>',
-'</div>'
-].join("");
+if(filteredResults.length===0 && !libraryHtml){
+app.innerHTML = ['<div class="empty">','<div class="empty-box">','<img class="empty-logo" src="'+esc(BRAND_ICON)+'" alt="PT Scans" />','<div style="font-size:18px;font-weight:800;color:#f4f8ff;margin-bottom:8px;">PT Scans</div>','<div style="font-size:13px;line-height:1.6;color:#9db1d3;">'+(allResults.length===0?'Pesquisa um título para começar.':'Não há resultados para este filtro.')+'</div>','</div>','</div>'].join("");
 return;
-}
-const resultsHtml = filteredResults.length ? (
-'<div class="grid">' +
-filteredResults.map((item) => {
-const cover = item.image
-? '<img class="cover" src="' + esc(item.image) + '" alt="' + esc(item.title) + '" />'
-: '<div class="fallback">Sem capa</div>';
-const aniChip = item.ani ? ('<div class="chip ok">Progresso AniList: ' + esc(item.ani.progress || 0) + '</div>') : '';
-return (
-'<div class="card">' +
-cover +
-'<div class="info">' +
-'<div>' +
-'<div class="title">' + esc(item.title) + '</div>' +
-'<div class="stats">' +
-'<div class="chip source">' + esc(item.source || getItemSource(item)) + '</div>' +
-'<div class="chip ' + (item.hasChapters ? 'ok' : 'no') + '">Capítulos: ' + (item.hasChapters ? 'Sim' : 'Não') + '</div>' +
-'<div class="chip">Total: ' + esc(item.chapterCount) + '</div>' +
-'<div class="chip">Último: ' + esc(item.latestChapter || "-") + '</div>' +
-(item.year ? '<div class="chip">Ano: ' + esc(item.year) + '</div>' : '') +
-aniChip +
-'</div>' +
-'</div>' +
-'<div class="sub">' + esc(item.id || "") + '</div>' +
-'</div>' +
-'</div>'
-);
-}).join("") +
-'</div>'
-) : "";
-app.innerHTML = (libraryHtml ? libraryHtml : "") + resultsHtml;
+} const resultsHtml = filteredResults.length?('<div class="grid">'+filteredResults.map(item=>{ const cover = item.image?<img class="cover" src="${esc(item.image)}" alt="${esc(item.title)}" />:'<div class="fallback">Sem capa</div>'; const aniChip = item.ani?('<div class="chip ok">Progresso AniList: '+esc(item.ani.progress||0)+'</div>'):''; return <div class="card">${cover}<div class="info"><div><div class="title">${esc(item.title)}</div><div class="stats"><div class="chip source">${esc(item.source||getItemSource(item))}</div><div class="chip ${item.hasChapters?'ok':'no'}">Capítulos: ${item.hasChapters?'Sim':'Não'}</div><div class="chip">Total: ${esc(item.chapterCount)}</div><div class="chip">Último: ${esc(item.latestChapter||"-")}</div>${item.year?('<div class="chip">Ano: '+esc(item.year)+'</div>'):''}${aniChip}</div></div><div class="sub">${esc(item.id||"")}</div></div></div> }).join("")+'</div>'):"";
+app.innerHTML = (libraryHtml?libraryHtml:"") + resultsHtml;
 }
 
-document.getElementById("searchBtn").addEventListener("click", () => {
-window.webview.send("search", document.getElementById("query").value);
-});
+document.getElementById("searchBtn").addEventListener("click",()=>{ window.webview.send("search", document.getElementById("query").value); });
+document.getElementById("query").addEventListener("keydown",(e)=>{ if(e.key==="Enter") window.webview.send("search", document.getElementById("query").value); });
+document.getElementById("clearBtn").addEventListener("click",()=>{ document.getElementById("query").value=""; state.sourceFilter="all"; window.webview.send("clear"); });
+document.getElementById("closeBtn").addEventListener("click",()=>{ window.webview.send("hide"); });
+document.getElementById("reloadBtn").addEventListener("click",()=>{ window.webview.send("reloadProvider"); });
+document.getElementById("anilistPinBtn").addEventListener("click",()=>{ window.webview.send("anilistStartPin"); document.getElementById("anilistPastePinBtn").style.display=""; });
+document.getElementById("anilistPastePinBtn").addEventListener("click",async ()=>{ const pin = prompt("Colar PIN de autorização AniList:"); if(pin) window.webview.send("anilistSubmitPin",pin); });
+document.getElementById("anilistLogoutBtn").addEventListener("click",()=>{ window.webview.send("anilistLogout"); });
+document.getElementById("anilistSyncToggle").addEventListener("change",(e)=>{ window.webview.send("anilistSyncToggle",!!e.target.checked); });
 
-document.getElementById("query").addEventListener("keydown", (e) => {
-if (e.key === "Enter") {
-window.webview.send("search", document.getElementById("query").value);
-}
-});
-
-document.getElementById("clearBtn").addEventListener("click", () => {
-document.getElementById("query").value = "";
-state.sourceFilter = "all";
-window.webview.send("clear");
-});
-
-document.getElementById("closeBtn").addEventListener("click", () => {
-window.webview.send("hide");
-});
-
-document.getElementById("reloadBtn").addEventListener("click", () => {
-window.webview.send("reloadProvider");
-});
-
-document.getElementById("anilistPinBtn").addEventListener("click", () => {
-window.webview.send("anilistStartPin");
-document.getElementById("anilistPastePinBtn").style.display = "";
-});
-
-document.getElementById("anilistPastePinBtn").addEventListener("click", async () => {
-const pin = prompt("Colar PIN de autorização AniList:");
-if (pin) {
-window.webview.send("anilistSubmitPin", pin);
-}
-});
-
-document.getElementById("anilistLogoutBtn").addEventListener("click", () => {
-window.webview.send("anilistLogout");
-});
-
-document.getElementById("anilistSyncToggle").addEventListener("change", (e) => {
-window.webview.send("anilistSyncToggle", !!e.target.checked);
-});
-
-window.webview.on("results", (value) => {
-state.results = value || [];
-render();
-});
-
-window.webview.on("status", (value) => {
-state.status = value || "Pronto";
-render();
-});
-
-window.webview.on("loading", (value) => {
-state.loading = !!value;
-render();
-});
-
-window.webview.on("query", (value) => {
-state.query = value || "";
-render();
-});
-
-window.webview.on("anilistLibrary", (value) => {
-state.anilistLibrary = value || null;
-render();
-});
-
-window.webview.on("anilistAuthState", (isLoggedIn) => {
-state.anilistLoggedIn = !!isLoggedIn;
-document.getElementById("anilistPinBtn").style.display = state.anilistLoggedIn ? "none" : "";
-document.getElementById("anilistPastePinBtn").style.display = state.anilistLoggedIn ? "none" : "";
-document.getElementById("anilistLogoutBtn").style.display = state.anilistLoggedIn ? "" : "none";
-});
-
-window.webview.on("anilistError", (msg) => {
-alert("Erro AniList: " + String(msg || ""));
-});
-
-window.webview.on("showPastePin", (v) => {
-document.getElementById("anilistPastePinBtn").style.display = v ? "" : "none";
-});
+window.webview.on("results",(value)=>{ state.results = value||[]; render(); });
+window.webview.on("status",(value)=>{ state.status = value||"Pronto"; render(); });
+window.webview.on("loading",(value)=>{ state.loading = !!value; render(); });
+window.webview.on("query",(value)=>{ state.query = value||""; render(); });
+window.webview.on("anilistLibrary",(value)=>{ state.anilistLibrary = value||null; render(); });
+window.webview.on("anilistAuthState",(isLoggedIn)=>{ state.anilistLoggedIn = !!isLoggedIn; document.getElementById("anilistPinBtn").style.display = state.anilistLoggedIn ? "none": ""; document.getElementById("anilistPastePinBtn").style.display = state.anilistLoggedIn ? "none": ""; document.getElementById("anilistLogoutBtn").style.display = state.anilistLoggedIn ? "":"none"; });
+window.webview.on("anilistError",(msg)=>{ alert("Erro AniList: "+String(msg||"")); });
+window.webview.on("showPastePin",(v)=>{ document.getElementById("anilistPastePinBtn").style.display = v? "":"none"; });
 
 render();
-})();
 </script>
 </body>
-</html>
-`;
-});
+</html>`); // end setContent
 
-});
+} // end initPlugin
+
+// Register with host API (assume $ui global exists)
+try {
+if (typeof $ui !== "undefined" && $ui && $ui.register) {
+$ui.register((ctx) => { initPlugin($ui, ctx); });
+} else if (typeof module !== "undefined" && module.exports) {
+// fallback for testing
+module.exports = { initPlugin };
+} else {
+// try to call if host exposes global ctx
+if (typeof init === "function") init();
 }
+} catch (e) {
+console.error("PT-Scans: failed to register plugin:", e);
+} })();
