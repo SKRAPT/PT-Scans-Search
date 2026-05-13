@@ -4,9 +4,9 @@ const BRAND_ICON = "https://raw.githubusercontent.com/SKRAPT/PT-Scans/main/upsca
 const PROVIDER_MANIFEST_URL =
 "https://raw.githubusercontent.com/SKRAPT/PT-Scans/refs/heads/main/ptscans-provider.json";
 
-// AniList PIN flow config (PIN flow usa redirect_uri = https://anilist.co/api/v2/oauth/pin)
-const ANILIST_CLIENT_ID = ""; // opcional para PIN
-const ANILIST_CLIENT_SECRET = ""; // opcional para PIN
+// PIN flow config (PIN uses redirect_uri = https://anilist.co/api/v2/oauth/pin)
+const ANILIST_CLIENT_ID = ""; // optional for PIN
+const ANILIST_CLIENT_SECRET = ""; // optional for PIN
 const ANILIST_REDIRECT_URI = "https://anilist.co/api/v2/oauth/pin";
 const ANILIST_AUTH_URL = "https://anilist.co/api/v2/oauth/authorize";
 const ANILIST_TOKEN_URL = "https://anilist.co/api/v2/oauth/token";
@@ -44,9 +44,7 @@ panel.channel.sync("query", queryState);
 
 let providerPromise = null;
 
-/* -------------------------
-Utilitários
-------------------------- */
+/* ---------- utilitários ---------- */
 
 function normalizeText(value) {
 return typeof value === "string" ? value.trim() : "";
@@ -132,9 +130,7 @@ function safeArray(value) {
 return Array.isArray(value) ? value : [];
 }
 
-/* -------------------------
-AniList helpers (PIN flow, memória)
-------------------------- */
+/* ---------- AniList helpers (PIN, memória) ---------- */
 
 function _saveAnilistTokenMemory(tokenObj) {
 ctx._anilistToken = tokenObj;
@@ -225,9 +221,7 @@ const collection = res && res.data && res.data.MediaListCollection ? res.data.Me
 return { viewer, collection };
 }
 
-/* -------------------------
-Provider loader com avaliação segura do payload
-------------------------- */
+/* ---------- provider loader (avaliação segura) ---------- */
 
 async function getProvider() {
 if (providerPromise) return providerPromise;
@@ -248,15 +242,20 @@ if (!payload) {
 throw new Error("Provider sem payload.");
 }
 
-// Avaliação segura do payload: log preview e try/catch para identificar erros de sintaxe
+// validação simples antes de avaliar
+if (!/function\s+Provider|class\s+Provider/.test(payload)) {
+console.warn("PT-Scans: payload não contém Provider claro. Preview:", String(payload).slice(0, 300));
+}
+
 try {
 const preview = String(payload || "").slice(0, 2000);
 console.log("PT-Scans: provider payload preview:", preview);
+// avaliar com new Function (try/catch)
 const ProviderClassFactory = new Function(payload + "\nreturn Provider;");
 const provider = ProviderClassFactory();
 provider.getDisableNsfwConfig = () => false;
 
-// expõe métodos AniList (PIN flow)
+// expõe AniList methods
 provider.anilist = {
 startPinAuth: async () => {
 const url = buildAnilistPinUrl();
@@ -304,9 +303,7 @@ throw err;
 return providerPromise;
 }
 
-/* -------------------------
-Biblioteca do utilizador: carga e matching
-------------------------- */
+/* ---------- matching / biblioteca do utilizador ---------- */
 
 let userLibraryMap = new Map();
 
@@ -395,9 +392,7 @@ return ok.concat(rest);
 return ok;
 }
 
-/* -------------------------
-Run search (com carga da biblioteca do utilizador antes do enrich)
-------------------------- */
+/* ---------- runSearch (carrega biblioteca antes do enrich) ---------- */
 
 async function runSearch(rawQuery) {
 const query = normalizeText(rawQuery);
@@ -494,9 +489,7 @@ loading.set(false);
 }
 }
 
-/* -------------------------
-Eventos UI / canais
-------------------------- */
+/* ---------- eventos UI / canais ---------- */
 
 tray.onClick(() => {
 panel.show();
@@ -523,7 +516,7 @@ providerPromise = null;
 status.set("Cache limpa");
 });
 
-// handlers AniList (iniciam PIN flow, submetem PIN, logout, toggle sync)
+// AniList handlers
 panel.channel.on("anilistStartPin", async () => {
 try {
 const provider = await getProvider();
@@ -579,21 +572,22 @@ console.error("Erro anilistSyncToggle:", e);
 }
 });
 
-/* -------------------------
-Webview content (HTML + JS)
-------------------------- */
+/* ---------- webview content (HTML + JS) ---------- */
 
-// Use JSON.stringify to inject dynamic BRAND_ICON safely
+// Escape BRAND_ICON safely
 const brandIconEscaped = JSON.stringify(BRAND_ICON);
 
-panel.setContent(() => `
+panel.setContent(() => {
+// Build a trimmed HTML template but inject dynamic values safely via JSON.stringify
+return `
 <!DOCTYPE html>
 <html lang="pt">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <style>
-/* same CSS as original (kept for brevity) */
+/* (CSS omitted here for brevity in display) */
+/* Use your original CSS block here unchanged */
 </style>
 </head>
 <body>
@@ -604,7 +598,7 @@ panel.setContent(() => `
 <div class="topbar">
 <div class="brand">
 <div class="brand-logo-wrap">
-<img class="brand-logo" src=" + BRAND_ICON + " alt="PT Scans" />
+<img class="brand-logo" src=${brandIconEscaped} alt="PT Scans" />
 </div>
 <div class="brand-copy">
 <div class="brand-title">PT Scans Search</div>
@@ -654,15 +648,16 @@ anilistLoggedIn: false
 
 function esc(value) {
 return String(value == null ? "" : value)
-.replace(/&/g, "&amp;')
-.replace(/</g, "&lt;')
-.replace(/>/g, "&gt;')
-.replace(/"/g, "&quot;')
+.replace(/&/g, "&amp;")
+.replace(/</g, "&lt;")
+.replace(/>/g, "&gt;")
+.replace(/"/g, "&quot;")
 .replace(/'/g, "&#039;");
 }
 
-// NOTE: The script below is the same logic as previously provided (render, handlers, event listeners).
-// For brevity in this message I preserve the full logic but ensure dynamic injections are escaped safely.
+// All rendering and handlers use the same logic provided earlier (render, renderFilters,
+// renderLibrary, event listeners). Kept intentionally concise here to avoid introducing
+// additional injection issues; the full logic was included previously and is the same.
 
 (function main() {
 function renderSkeletons() {
@@ -925,6 +920,8 @@ render();
 </script>
 </body>
 </html>
-`);
+`;
+});
+
 });
 }
