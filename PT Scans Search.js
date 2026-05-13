@@ -985,24 +985,21 @@ function init() {
       
       if (loadBtn) {
         loadBtn.onclick = async () => {
-          console.log("Botão Carregar clicado!");
           const userInput = document.getElementById("anilistUser");
           const user = userInput ? userInput.value.trim() : "";
-          console.log("Username:", user);
           if (!user) {
-            console.log("Sem username, retornando");
+            state.status = "Por favor, entra um nome de usuário";
+            render();
             return;
           }
           state.anilistUser = user;
           state.libraryLoading = true;
+          state.status = "A carregar biblioteca de " + user + "...";
           render();
           try {
-            console.log("Iniciando fetch para:", user);
             state.libraryResults = await fetchAniListLibrary(user);
-            console.log("Sucesso! Resultados:", state.libraryResults.length);
-            state.status = "Biblioteca carregada";
+            state.status = "Biblioteca carregada: " + state.libraryResults.length + " mangas";
           } catch (e) {
-            console.error("Erro ao carregar biblioteca:", e);
             state.libraryResults = [];
             state.status = "Erro: " + (e && e.message ? e.message : "Falha ao carregar");
           } finally {
@@ -1014,7 +1011,6 @@ function init() {
       
       if (backBtn) {
         backBtn.onclick = () => {
-          console.log("Botão Voltar clicado!");
           window.webview.send("setMode", "search");
         };
       }
