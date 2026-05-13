@@ -876,7 +876,88 @@ function init() {
         .replace(/'/g, "&#039;");
     }
 
-    async function fetchAniListLibrary(username) {
+    async function searchMangaProviders(title) {
+      try {
+        const provider = await getProvider();
+        const found = safeArray(await provider.search({ query: title }));
+        
+        const grouped = {};
+        for (let i = 0; i < found.length; i++) {
+          var item = found[i];
+          var src = splitSourceId(item.id).source;
+          
+          if (!grouped[src]) {
+            grouped[src] = { title: sourceLabel(src), items: [] };
+          }
+          
+          var chapters = [];
+          try {
+            chapters = safeArray(await provider.findChapters(item.id));
+          } catch (e) {}
+          
+          grouped[src].items.push({
+            title: stripProviderPrefix(item.title),
+            chapters: chapters.length
+          });
+        }
+        
+        return grouped;
+      } catch (e) {
+        throw new Error("Erro ao pesquisar providers: " + (e && e.message ? e.message : "falha"));
+      }
+    }
+
+    function renderProviderModal(mangaTitle, providerData) {
+      let html = '<div style="position: fixed; inset: 0; background: rgba(0,0,0,.7); display: flex; align-items: center; justify-content: center; z-index: 1000;">';
+      html += '<div style="background: rgba(14, 20, 36, .95); border: 1px solid rgba(255,255,255,.11); border-radius: 24px; max-width: 600px; max-height: 80vh; overflow: auto; padding: 24px; backdrop-filter: blur(22px);">';
+      html += '<div style="font-size: 20px; font-weight: 800; color: #f7fbff; margin-bottom: 16px;">Providers disponíveis</div>';
+      html += '<div style="font-size: 13px; color: #98a9c7; margin-bottom: 20px;">' + esc(mangaTitle) + '</div>';
+      
+      const sources = Object.keys(providerData);
+      for (let i = 0; i < sources.length; i++) {
+        var src = sources[i];
+        var data = providerData[src];
+        
+        html += '<div style="margin-bottom: 16px; padding: 12px; background: rgba(255,255,255,.04); border-radius: 12px; border-left: 3px solid #5ea2ff;">';
+        html += '<div style="font-size: 14px; font-weight: 800; color: #d5e7ff; margin-bottom: 8px;">' + esc(data.title) + '</div>';
+        
+        for (let j = 0; j < data.items.length; j++) {
+          var item = data.items[j];
+          html += '<div style="font-size: 12px; color: #98a9c7; padding: 4px 0;">';
+          html += esc(item.title) + ' - <span style="color: #5ea2ff; font-weight: 800;">' + item.chapters + ' caps</span>';
+          html += '</div>';
+        }
+        
+        html += '</div>';
+      }
+      
+      html += '<button id="closeModal" class="btn" style="width: 100%; margin-top: 16px;">Fechar</button>';
+      html += '</div></div>';
+      
+      return html;
+    }
+
+    async function openProviderModal(mangaTitle) {
+      state.status = "A pesquisar em providers...";
+      render();
+      
+      try {
+        const providerData = await searchMangaProviders(mangaTitle);
+        
+        const app = document.getElementById("app");
+        app.innerHTML = renderProviderModal(mangaTitle, providerData);
+        
+        const closeBtn = document.getElementById("closeModal");
+        if (closeBtn) {
+          closeBtn.onclick = () => {
+            render();
+          };
+        }
+      } catch (e) {
+        state.status = "Erro: " + (e && e.message ? e.message : "Falha ao pesquisar");
+        render();
+      }
+    }
       const escapedName = username.replace(/"/g, '\\"');
       const userQuery = 'query { User(name: "' + escapedName + '") { id } }';
       const userRes = await fetch('https://graphql.anilist.co', {
@@ -982,6 +1063,7 @@ function init() {
     function attachLibraryListeners() {
       const loadBtn = document.getElementById("loadLibraryBtn");
       const backBtn = document.getElementById("backToSearchBtn");
+      const providerBtns = document.querySelectorAll(".providerBtn");
       
       if (loadBtn) {
         loadBtn.onclick = async () => {
@@ -1013,6 +1095,15 @@ function init() {
         backBtn.onclick = () => {
           window.webview.send("setMode", "search");
         };
+      }
+      
+      for (let i = 0; i < providerBtns.length; i++) {
+        var btn = providerBtns[i];
+        btn.onclick = (function(title) {
+          return async () => {
+            await openProviderModal(title);
+          };
+        })(btn.dataset.title);
       }
     }
 
@@ -1121,7 +1212,9 @@ function init() {
           html += coverHtml;
           html += '<div class="info"><div class="title">' + esc(item.title) + '</div>';
           html += '<div class="stats"><div class="chip">Progresso: ' + esc(String(item.progress)) + '/' + esc(chapterText) + '</div>';
-          html += '<div class="chip source">AniList</div></div></div></div>';
+          html += '<div class="chip source">AniList</div></div>';
+          html += '<button class="providerBtn" data-title="' + esc(item.title) + '" style="margin-top: 8px; width: 100%; background: rgba(94,162,255,.15); border: 1px solid rgba(94,162,255,.3); color: #5ea2ff; padding: 8px; border-radius: 8px; cursor: pointer; font-weight: 800; font-size: 12px;">Ver Providers</button>';
+          html += '</div></div>';
         }
         html += '</div>';
       } else {
