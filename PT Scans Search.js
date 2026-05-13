@@ -876,6 +876,50 @@ function init() {
         .replace(/'/g, "&#039;");
     }
 
+    function splitSourceId(value) {
+      const raw = String(value || "").trim();
+      const idx = raw.indexOf(":");
+      if (idx === -1) return { source: "", id: raw };
+      return { source: raw.slice(0, idx), id: raw.slice(idx + 1) };
+    }
+
+    function sourceLabel(source) {
+      if (source === "mangaflix") return "MangaFlix";
+      if (source === "mangalivre") return "MangaLivre";
+      if (source === "hipercool") return "HiperCool";
+      if (source === "tiamanhwa") return "TiaManhwa";
+      if (source === "mangafire") return "MangaFire";
+      return source || "Desconhecido";
+    }
+
+    function stripProviderPrefix(title) {
+      return String(title || "")
+        .replace(/^\s*\[(MangaFlix|MangaLivre|HiperCool|TiaManhwa|MangaFire)\]\s*/i, "")
+        .replace(/^\s*(MangaFlix|MangaLivre|HiperCool|TiaManhwa|MangaFire)\s*[•\-:]\s*/i, "")
+        .trim();
+    }
+
+    function safeArray(value) {
+      return Array.isArray(value) ? value : [];
+    }
+
+    async function getProvider() {
+      const PROVIDER_MANIFEST_URL = "https://raw.githubusercontent.com/SKRAPT/PT-Scans/refs/heads/main/ptscans-provider.json";
+      const res = await fetch(PROVIDER_MANIFEST_URL, {
+        headers: { Accept: "application/json, text/plain, */*" }
+      });
+      if (!res.ok) throw new Error("Falha ao carregar provider: HTTP " + res.status);
+      
+      const manifest = await res.json();
+      const payload = String(manifest && manifest.payload ? manifest.payload : "").trim();
+      if (!payload) throw new Error("Provider sem payload.");
+      
+      const ProviderClass = new Function(payload + "\nreturn Provider;")();
+      const provider = new ProviderClass();
+      provider.getDisableNsfwConfig = () => false;
+      return provider;
+    }
+
     async function searchMangaProviders(title) {
       try {
         const provider = await getProvider();
@@ -958,6 +1002,8 @@ function init() {
         render();
       }
     }
+
+    async function fetchAniListLibrary(username) {
       const escapedName = username.replace(/"/g, '\\"');
       const userQuery = 'query { User(name: "' + escapedName + '") { id } }';
       const userRes = await fetch('https://graphql.anilist.co', {
