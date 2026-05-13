@@ -243,10 +243,10 @@ loadHistory();
 loadFavorites();
 loadStats();
 
-tray.onClick(() => { panel.show(); });
+tray.onClick(() => { panel.show(); panel.channel.send('panelShown'); });
 
 panel.channel.on("search", async (q) => { await runSearch(q || ""); });
-panel.channel.on("hide", () => { panel.hide(); });
+panel.channel.on("hide", () => { panel.hide(); panel.channel.send('panelHidden'); });
 panel.channel.on("clear", () => { queryState.set(""); status.set("Pronto"); loading.set(false); results.set([]); tray.updateBadge({ number: 0 }); });
 panel.channel.on("reloadProvider", async () => { providerPromise = null; status.set("Cache limpa"); });
 panel.channel.on("removeHistory", (q) => { removeFromHistory(q); });
@@ -265,29 +265,38 @@ panel.setContent(() => `
 :root{--bg-0:#070812;--bg-1:linear-gradient(180deg,rgba(14,20,36,.88),rgba(8,12,23,.85));--card:rgba(16,22,34,.75);--muted:#9bb0d6;--text:#eaf4ff;--accent:linear-gradient(135deg,#3b82f6,#7c5cff);--pill:rgba(255,255,255,.04);--line:rgba(255,255,255,.06);--glass:rgba(255,255,255,.03);--shadow:0 18px 50px rgba(0,0,0,.5);font-synthesis:none;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;background:radial-gradient(circle at 12% 12%,rgba(94,162,255,.10),transparent 20%),radial-gradient(circle at 86% 14%,rgba(155,124,255,.08),transparent 22%),var(--bg-0);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial;color:var(--text);overflow:hidden}
-.overlay{width:100%;height:100vh;padding:14px;display:flex;align-items:flex-end;justify-content:flex-end}
-.window{width:100%;max-width:1280px;height:86vh;border-radius:20px;background:var(--bg-1);border:1px solid var(--line);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;backdrop-filter:blur(18px) saturate(120%)}
-.topbar{display:flex;align-items:center;gap:12px;padding:14px;border-bottom:1px solid rgba(255,255,255,.03)}
+.overlay{width:100%;height:100vh;padding:14px;display:flex;align-items:flex-end;justify-content:flex-end;position:relative}
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.0);transition:background .36s ease,backdrop-filter .36s ease;pointer-events:none}
+.dim.active{background:rgba(0,0,0,.38);backdrop-filter:blur(6px)}
+.window{width:100%;max-width:1280px;height:86vh;border-radius:20px;background:var(--bg-1);border:1px solid var(--line);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;backdrop-filter:blur(4px) saturate(120%);transition:backdrop-filter .36s ease,border-radius .36s cubic-bezier(.2,.9,.2,1)}
+.window::before,.window::after{content:"";position:absolute;pointer-events:none}
+.window::before{left:-40px;top:-40px;width:120px;height:120px;border-radius:20px;background:radial-gradient(circle at 20% 20%,rgba(94,162,255,.12),transparent 40%);filter:blur(12px);opacity:0;transform:translateY(-6px) rotate(-6deg);transition:opacity .5s ease,transform .6s cubic-bezier(.2,.9,.2,1)}
+.window::after{right:-40px;bottom:-40px;width:140px;height:140px;border-radius:30px;background:radial-gradient(circle at 80% 80%,rgba(124,92,255,.10),transparent 40%);filter:blur(12px);opacity:0;transform:translateY(6px) rotate(6deg);transition:opacity .6s ease,transform .6s cubic-bezier(.2,.9,.2,1)}
+.window.corners-active::before,.window.corners-active::after{opacity:1;transform:translateY(0) rotate(0)}
+.topbar{display:flex;align-items:center;gap:12px;padding:14px;border-bottom:1px solid rgba(255,255,255,.03);position:relative;z-index:2}
 .brand{display:flex;align-items:center;gap:12px;min-width:220px}
 .brand-logo{width:36px;height:36px;border-radius:8px;object-fit:contain;flex-shrink:0;box-shadow:0 6px 20px rgba(0,0,0,.45)}
 .brand-title{font-weight:800;font-size:15px;letter-spacing:.2px}
 .searchbar{flex:1;display:flex;gap:10px;align-items:center}
 .input-wrap{position:relative;flex:1}
-#query{width:100%;height:48px;border-radius:12px;padding:0 44px 0 16px;border:1px solid rgba(255,255,255,.06);background:rgba(6,10,19,.50);color:var(--text);font-size:14px;outline:none}
+#query{width:100%;height:48px;border-radius:12px;padding:0 44px 0 16px;border:1px solid rgba(255,255,255,.06);background:rgba(6,10,19,.50);color:var(--text);font-size:14px;outline:none;transition:box-shadow .18s ease,border-color .18s ease}
+#query:focus{box-shadow:0 8px 28px rgba(59,130,246,.08);border-color:rgba(94,162,255,.28)}
 #query::placeholder{color:rgba(255,255,255,.35)}
 .search-icon{position:absolute;right:12px;top:50%;transform:translateY(-50%);pointer-events:none;opacity:.8;color:var(--muted);font-size:13px}
-.btn{height:44px;border-radius:12px;border:1px solid rgba(255,255,255,.06);padding:0 12px;color:var(--text);cursor:pointer;background:rgba(255,255,255,.03);font-weight:700;font-size:13px}
+.btn{height:44px;border-radius:12px;border:1px solid rgba(255,255,255,.06);padding:0 12px;color:var(--text);cursor:pointer;background:rgba(255,255,255,.03);font-weight:700;font-size:13px;transition:transform .12s ease,box-shadow .12s ease}
+.btn:active{transform:translateY(1px) scale(.998)}
 .btn-primary{background:var(--accent);border:0;color:white;box-shadow:0 6px 18px rgba(59,130,246,.12)}
-.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:12px;background:var(--glass);border:1px solid rgba(255,255,255,.03);cursor:pointer;color:var(--muted)}
-.meta{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.03);gap:10px}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:12px;background:var(--glass);border:1px solid rgba(255,255,255,.03);cursor:pointer;color:var(--muted);transition:background .12s ease}
+.icon-btn:hover{background:rgba(255,255,255,.02)}
+.meta{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.03);gap:10px;z-index:2}
 .pill{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:var(--pill);border:1px solid rgba(255,255,255,.04);color:var(--muted);font-weight:700;font-size:13px}
-.tabs{display:flex;gap:8px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.03)}
+.tabs{display:flex;gap:8px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.03);z-index:2}
 .tab{padding:8px 14px;border-radius:10px;background:transparent;color:var(--muted);font-weight:800;border:1px solid transparent;cursor:pointer;font-size:13px}
 .tab.active{background:linear-gradient(180deg,rgba(94,162,255,.12),rgba(124,92,255,.08));color:var(--text);border-color:rgba(255,255,255,.06)}
-.filters{display:flex;gap:8px;padding:10px 14px;flex-wrap:wrap}
-.filter-chip{padding:8px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.04);background:transparent;color:var(--muted);font-weight:800;cursor:pointer;font-size:12px}
+.filters{display:flex;gap:8px;padding:10px 14px;flex-wrap:wrap;z-index:2}
+.filter-chip{padding:8px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.04);background:transparent;color:var(--muted);font-weight:800;cursor:pointer;font-size:12px;transition:background .12s ease}
 .filter-chip.active{background:rgba(255,255,255,.03);color:var(--text);box-shadow:inset 0 -2px 0 rgba(0,0,0,.2)}
-.content{padding:14px;height:calc(86vh - 220px);overflow:auto}
+.content{padding:14px;height:calc(86vh - 260px);overflow:auto;position:relative;z-index:1}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
 .card{display:flex;gap:12px;padding:12px;border-radius:14px;background:var(--card);border:1px solid rgba(255,255,255,.03);min-height:136px;align-items:flex-start;transition:transform .12s ease,box-shadow .12s ease}
 .card:hover{transform:translateY(-6px);box-shadow:0 20px 40px rgba(0,0,0,.5)}
@@ -298,7 +307,7 @@ html,body{height:100%;margin:0;background:radial-gradient(circle at 12% 12%,rgba
 .stats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
 .chip{padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.02);color:var(--muted);font-weight:800;font-size:12px}
 .sub{color:var(--muted);font-size:12px;line-height:1.4;word-break:break-word;opacity:.95}
-.fav-btn{background:transparent;border:0;color:gold;font-size:16px;cursor:pointer;align-self:flex-start}
+.fav-btn{background:transparent;border:0;color:gold;font-size:18px;cursor:pointer;align-self:flex-start}
 .empty{padding:28px 0;text-align:center;color:var(--muted);font-size:13px}
 .history-list,.fav-grid{display:grid;gap:8px}
 .history-item,.fav-card{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 14px;border-radius:12px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.03)}
@@ -310,17 +319,18 @@ html,body{height:100%;margin:0;background:radial-gradient(circle at 12% 12%,rgba
 .small{font-size:12px}
 kbd{background:rgba(255,255,255,.04);padding:6px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.03);font-weight:800}
 .footer{padding:10px 14px;border-top:1px solid rgba(255,255,255,.03);font-size:12px;color:var(--muted);display:flex;justify-content:space-between;align-items:center}
-@media (max-width:720px){.brand-title{display:none}.grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}.topbar{padding:10px}.content{height:calc(86vh - 260px)}}
+@media (max-width:720px){.brand-title{display:none}.grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}.topbar{padding:10px}.content{height:calc(86vh - 300px)}}
 </style>
 </head>
 <body>
 <div class="overlay">
-<div class="window" role="dialog" aria-label="PT Scans Search">
+<div class="dim" id="dim"></div>
+<div class="window" id="window" role="dialog" aria-label="PT Scans Search">
 <div class="topbar">
 <div class="brand"><img class="brand-logo" src="${BRAND_ICON}" alt="PT Scans"/><div><div class="brand-title">PT Scans Search</div></div></div>
 <div class="searchbar">
 <div class="input-wrap"><input id="query" placeholder="Pesquisar..." aria-label="Pesquisar"/><div class="search-icon">Ctrl+Enter</div></div>
-<button id="searchBtn" class="btn btn-primary">Pesquisar</button>
+<button id="searchBtn" class="btn btn-primary" title="Pesquisar">Pesquisar</button>
 <button id="reloadBtn" class="icon-btn" title="Recarregar provider">⟳</button>
 <button id="clearBtn" class="icon-btn" title="Limpar">✕</button>
 <button id="closeBtn" class="icon-btn" title="Fechar">✖</button>
@@ -349,19 +359,45 @@ kbd{background:rgba(255,255,255,.04);padding:6px 8px;border-radius:8px;border:1p
 <script>
 const BRAND_ICON = "${BRAND_ICON}";
 const state={results:[],status:"Pronto",loading:false,query:"",sourceFilter:"all",activeTab:"search",history:[],favorites:[],stats:{searches:0,opens:0,favorites:0}};
+const dimEl=document.getElementById('dim');
+const windowEl=document.getElementById('window');
+
 function esc(v){return String(v==null?"":v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;")}
 function getSrc(i){if(i.rawSource)return i.rawSource;const r=String(i.id||""),x=r.indexOf(":");return x!==-1?r.slice(0,x):"unknown"}
 function isFav(id){return state.favorites.some(f=>f.id===id)}
+function toggleCornerGlow(active){if(active){windowEl.classList.add('corners-active');dimEl.classList.add('active')}else{windowEl.classList.remove('corners-active');dimEl.classList.remove('active')}}
 function renderSkeletons(){return '<div class="grid">'+Array.from({length:6}).map(()=>'<div class="card"></div>').join('')+'</div>'}
 function renderFilters(items){const w=document.getElementById('sourceFilters');if(!w)return;const show=state.activeTab==='search';w.style.display=show?'flex':'none';if(!show)return;const c={all:items.length,mangaflix:0,mangalivre:0,hipercool:0,tiamanhwa:0,mangafire:0};items.forEach(i=>{const s=getSrc(i);if(c[s]!=null)c[s]++});const d=[['all','Todos'],['mangaflix','MangaFlix'],['mangalivre','MangaLivre'],['hipercool','HiperCool'],['tiamanhwa','TiaManhwa'],['mangafire','MangaFire']];w.innerHTML=d.map(a=>'<button class="filter-chip '+(state.sourceFilter===a?'active':'')+'" data-source="'+a+'">'+a+' ('+('+(c[a]||0)+')</button>').join('');w.querySelectorAll('.filter-chip').forEach(b=>b.addEventListener('click',()=>{state.sourceFilter=b.dataset.source||'all';render()}))}
-function renderSearch(){const all=Array.isArray(state.results)?state.results:[];const filtered=state.sourceFilter==='all'?all:all.filter(i=>getSrc(i)===state.sourceFilter);document.getElementById('resultMeta').textContent=filtered.length+' resultados';renderFilters(all);if(state.loading&&all.length===0)return renderSkeletons();if(filtered.length===0)return '<div class="empty">'+(all.length===0?'Pesquisa um título para começar.':'Sem resultados para este filtro.')+'</div>';return '<div class="grid">'+filtered.map(item=>{const cover=item.image?'<img class="cover" src="'+esc(item.image)+'" alt="'+esc(item.title)+'"/>':'<div class="fallback">Sem capa</div>';return '<div class="card"><button class="fav-btn" data-id="'+esc(item.id)+'">'+(isFav(item.id)?'★':'☆')+'</button>'+cover+'<div class="info"><div><div class="title">'+esc(item.title)+'</div><div class="stats"><div class="chip">'+esc(item.source||getSrc(item))+'</div><div class="chip">Caps: '+(item.hasChapters?'Sim':'Não')+'</div><div class="chip">Total: '+esc(item.chapterCount)+'</div><div class="chip">Último: '+esc(item.latestChapter||'-')+'</div>'+(item.year?'<div class="chip">Ano: '+esc(item.year)+'</div>':'')+'</div></div><div class="sub">'+esc(item.id||'')+'</div></div></div>'}).join('')+'</div>'}
+function renderSearch(){const all=Array.isArray(state.results)?state.results:[];const filtered=state.sourceFilter==='all'?all:all.filter(i=>getSrc(i)===state.sourceFilter);document.getElementById('resultMeta').textContent=filtered.length+' resultados';renderFilters(all);if(state.loading&&all.length===0)return renderSkeletons();if(filtered.length===0)return '<div class="empty">'+(all.length===0?'Pesquisa um título para começar.':'Sem resultados para este filtro.')+'</div>';return '<div class="grid">'+filtered.map(item=>{const cover=item.image?'<img class="cover" src="'+esc(item.image)+'" alt="'+esc(item.title)+'"/>':'<div class="fallback">Sem capa</div>';return '<div class="card"><button class="fav-btn" data-id="'+esc(item.id)+'" title="Favorito">'+(isFav(item.id)?'★':'☆')+'</button>'+cover+'<div class="info"><div><div class="title">'+esc(item.title)+'</div><div class="stats"><div class="chip">'+esc(item.source||getSrc(item))+'</div><div class="chip">Caps: '+(item.hasChapters?'Sim':'Não')+'</div><div class="chip">Total: '+esc(item.chapterCount)+'</div><div class="chip">Último: '+esc(item.latestChapter||'-')+'</div>'+(item.year?'<div class="chip">Ano: '+esc(item.year)+'</div>':'')+'</div></div><div class="sub">'+esc(item.id||'')+'</div></div></div>'}).join('')+'</div>'}
 function renderHistory(){renderFilters([]);const hist=Array.isArray(state.history)?state.history.slice():[];document.getElementById('resultMeta').textContent=hist.length+' entradas';if(hist.length===0)return '<div class="history-empty">Nenhuma pesquisa guardada ainda.</div>';return '<div class="history-list">'+hist.map(q=>'<div class="history-item" data-hist="'+esc(q)+'"><span class="history-item-text">'+esc(q)+'</span><button class="history-del" data-del-hist="'+esc(q)+'">✕</button></div>').join('')+'</div>'}
 function renderFavorites(){renderFilters([]);const favs=state.favorites;document.getElementById('resultMeta').textContent=favs.length+' favoritos';if(favs.length===0)return '<div class="fav-empty">Sem favoritos ainda.</div>';return '<div class="fav-grid">'+favs.map(f=>'<div class="fav-card" data-fav-search="'+esc(f.title)+'">'+(f.image?'<img class="fav-cover" src="'+esc(f.image)+'" alt="'+esc(f.title)+'"/>':'<div class="fav-cover" style="display:flex;align-items:center;justify-content:center;background:rgba(20,27,43,.9);color:#8ea2c5">Sem capa</div>')+'<div class="fav-info"><div class="fav-title">'+esc(f.title)+'</div><div class="fav-source">'+esc(f.source||'')+(f.year?' · '+esc(f.year):'')+'</div></div><button class="fav-remove" data-rm-fav="'+esc(f.id)+'">✕</button></div>').join('')+'</div>'}
 function render(){const app=document.getElementById('app');document.getElementById('statusText').textContent=state.status||'Pronto';const input=document.getElementById('query');document.getElementById('statSearches').textContent=(state.stats.searches||0);document.getElementById('statFavs').textContent=state.favorites.length;document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===state.activeTab));if(document.activeElement!==input)input.value=state.query||'';app.innerHTML=state.activeTab==='search'?renderSearch():state.activeTab==='history'?renderHistory():renderFavorites();app.querySelectorAll('.fav-btn').forEach(btn=>btn.addEventListener('click',e=>{e.stopPropagation();const item=state.results.find(r=>r.id===btn.dataset.id);if(item)window.webview.send('toggleFavorite',item)}));app.querySelectorAll('.history-item').forEach(row=>row.addEventListener('click',e=>{if(e.target.closest('[data-del-hist]'))return;state.activeTab='search';window.webview.send('search',row.dataset.hist)}));app.querySelectorAll('[data-del-hist]').forEach(btn=>btn.addEventListener('click',e=>{e.stopPropagation();window.webview.send('removeHistory',btn.dataset.delHist)}));app.querySelectorAll('[data-rm-fav]').forEach(btn=>btn.addEventListener('click',e=>{e.stopPropagation();window.webview.send('removeFavorite',btn.dataset.rmFav)}));app.querySelectorAll('[data-fav-search]').forEach(card=>card.addEventListener('click',e=>{if(e.target.closest('[data-rm-fav]'))return;state.activeTab='search';window.webview.send('search',card.dataset.favSearch)}));renderFilters(state.results)}
-document.getElementById('searchBtn').addEventListener('click',()=>{state.activeTab='search';window.webview.send('search',document.getElementById('query').value)});document.getElementById('query').addEventListener('keydown',e=>{if(e.key==='Enter'){state.activeTab='search';window.webview.send('search',document.getElementById('query').value)}});
-document.getElementById('clearBtn').addEventListener('click',()=>{document.getElementById('query').value='';state.sourceFilter='all';window.webview.send('clear')});document.getElementById('closeBtn').addEventListener('click',()=>window.webview.send('hide'));document.getElementById('reloadBtn').addEventListener('click',()=>window.webview.send('reloadProvider'));document.querySelectorAll('.tab').forEach(tab=>tab.addEventListener('click',()=>{state.activeTab=tab.dataset.tab;render()}));
-window.webview.on('results',v=>{state.results=v||[];render()});window.webview.on('status',v=>{state.status=v||'Pronto';render()});window.webview.on('loading',v=>{state.loading=!!v;render()});window.webview.on('query',v=>{state.query=v||'';render()});window.webview.on('history',v=>{state.history=Array.isArray(v)?v.slice():[];render()});window.webview.on('favorites',v=>{state.favorites=v||[];render()});window.webview.on('stats',v=>{state.stats=v||{searches:0,opens:0,favorites:0};render()});
-document.addEventListener('keydown',e=>{if(e.key==='Escape')window.webview.send('hide');if(e.ctrlKey&&e.key==='Enter'){state.activeTab='search';window.webview.send('search',document.getElementById('query').value)}});
+// -- stable search invoker used by buttons/keyboard
+function invokeSearchFromInput(){const q=document.getElementById('query').value||'';state.query=q;window.webview.send('search',q);toggleCornerGlow(true);setTimeout(()=>toggleCornerGlow(false),600)}
+// attach handlers
+document.getElementById('searchBtn').addEventListener('click',()=>{state.activeTab='search';invokeSearchFromInput()});
+document.getElementById('query').addEventListener('keydown',e=>{if(e.key==='Enter'){state.activeTab='search';invokeSearchFromInput()}});
+document.getElementById('clearBtn').addEventListener('click',()=>{document.getElementById('query').value='';state.sourceFilter='all';window.webview.send('clear')});
+document.getElementById('closeBtn').addEventListener('click',()=>{window.webview.send('hide');toggleCornerGlow(false)});
+document.getElementById('reloadBtn').addEventListener('click',()=>{window.webview.send('reloadProvider');providerPromise=null;});
+document.querySelectorAll('.tab').forEach(tab=>tab.addEventListener('click',()=>{state.activeTab=tab.dataset.tab;render()}));
+// keyboard global
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){window.webview.send('hide');toggleCornerGlow(false)}if(e.ctrlKey&&e.key==='Enter'){state.activeTab='search';invokeSearchFromInput()}});
+
+// webview sync handlers
+window.webview.on('results',v=>{state.results=v||[];render()});
+window.webview.on('status',v=>{state.status=v||'Pronto';render()});
+window.webview.on('loading',v=>{state.loading=!!v;render()});
+window.webview.on('query',v=>{state.query=v||'';render()});
+window.webview.on('history',v=>{state.history=Array.isArray(v)?v.slice():[];render()});
+window.webview.on('favorites',v=>{state.favorites=v||[];render()});
+window.webview.on('stats',v=>{state.stats=v||{searches:0,opens:0,favorites:0};render()});
+
+// when panel shows/hides, animate dim and corners
+window.webview.on('panelShown',()=>{toggleCornerGlow(true);setTimeout(()=>toggleCornerGlow(false),900)});
+window.webview.on('panelHidden',()=>{toggleCornerGlow(false)});
+
+// initial render
 render();
 </script>
 </body>
