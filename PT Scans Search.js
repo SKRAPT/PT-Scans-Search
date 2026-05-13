@@ -1060,22 +1060,42 @@ function init() {
     }
 
     function renderLibrary() {
-      let libraryContent = '';
+      let html = '<div style="padding: 20px;">';
+      html += '<div style="display: flex; gap: 10px; margin-bottom: 20px; align-items: center;">';
+      html += '<input id="anilistUser" placeholder="Nome de usuário AniList" value="' + esc(state.anilistUser) + '" style="flex: 1; height: 50px; border-radius: 16px; border: 1px solid rgba(255,255,255,.09); background: rgba(6, 10, 19, .42); color: white; padding: 0 16px; outline: none;" />';
+      html += '<button id="loadLibraryBtn" class="btn btn-primary">Carregar</button>';
+      html += '<button id="backToSearchBtn" class="btn">Voltar</button>';
+      html += '</div>';
       
-      if (state.libraryResults.length > 0) {
-        libraryContent = '<div class="grid">';
-        for (let item of state.libraryResults) {
-          const cover = item.image ? '<img class="cover" src="' + esc(item.image) + '" alt="' + esc(item.title) + '" />' : '<div class="fallback">Sem capa</div>';
-          libraryContent += '<div class="card">' + cover + '<div class="info"><div class="title">' + esc(item.title) + '</div><div class="stats"><div class="chip">Progresso: ' + esc(item.progress) + '/' + esc(item.chapters || '?') + '</div><div class="chip source">AniList</div></div></div></div>';
-        }
-        libraryContent += '</div>';
-      } else {
-        libraryContent = '<div class="empty"><div class="empty-box"><img class="empty-logo" src="' + esc(BRAND_ICON) + '" alt="PT Scans" /><div style="font-size:18px;font-weight:800;color:#f4f8ff;margin-bottom:8px;">Biblioteca AniList</div><div style="font-size:13px;line-height:1.6;color:#9db1d3;">Insira seu nome de usuário e carregue sua biblioteca.</div></div></div>';
+      if (state.libraryLoading) {
+        html += renderSkeletons();
       }
       
-      const loadingContent = state.libraryLoading ? renderSkeletons() : '';
+      html += '<div id="libraryGrid">';
       
-      return '<div style="padding: 20px;"><div style="display: flex; gap: 10px; margin-bottom: 20px; align-items: center;"><input id="anilistUser" placeholder="Nome de usuário AniList" value="' + esc(state.anilistUser) + '" style="flex: 1; height: 50px; border-radius: 16px; border: 1px solid rgba(255,255,255,.09); background: rgba(6, 10, 19, .42); color: white; padding: 0 16px; outline: none;" /><button id="loadLibraryBtn" class="btn btn-primary">Carregar</button><button id="backToSearchBtn" class="btn">Voltar</button></div>' + loadingContent + '<div id="libraryGrid">' + libraryContent + '</div></div>';
+      if (state.libraryResults.length > 0) {
+        html += '<div class="grid">';
+        for (let i = 0; i < state.libraryResults.length; i++) {
+          var item = state.libraryResults[i];
+          var chapterText = item.chapters ? String(item.chapters) : '?';
+          var coverHtml = item.image ? '<img class="cover" src="' + esc(item.image) + '" alt="' + esc(item.title) + '" />' : '<div class="fallback">Sem capa</div>';
+          html += '<div class="card">';
+          html += coverHtml;
+          html += '<div class="info"><div class="title">' + esc(item.title) + '</div>';
+          html += '<div class="stats"><div class="chip">Progresso: ' + esc(String(item.progress)) + '/' + esc(chapterText) + '</div>';
+          html += '<div class="chip source">AniList</div></div></div></div>';
+        }
+        html += '</div>';
+      } else {
+        html += '<div class="empty"><div class="empty-box">';
+        html += '<img class="empty-logo" src="' + esc(BRAND_ICON) + '" alt="PT Scans" />';
+        html += '<div style="font-size:18px;font-weight:800;color:#f4f8ff;margin-bottom:8px;">Biblioteca AniList</div>';
+        html += '<div style="font-size:13px;line-height:1.6;color:#9db1d3;">Insira seu nome de usuário e carregue sua biblioteca.</div>';
+        html += '</div></div>';
+      }
+      
+      html += '</div></div>';
+      return html;
     }
 
     document.getElementById("searchBtn").addEventListener("click", () => {
