@@ -28,11 +28,13 @@ function init() {
     const loading = ctx.state(false);
     const status = ctx.state("Pronto");
     const results = ctx.state([]);
+    const mode = ctx.state("search");
 
     panel.channel.sync("results", results);
     panel.channel.sync("status", status);
     panel.channel.sync("loading", loading);
     panel.channel.sync("query", queryState);
+    panel.channel.sync("mode", mode);
 
     let providerPromise = null;
 
@@ -219,6 +221,10 @@ function init() {
     panel.channel.on("reloadProvider", async () => {
       providerPromise = null;
       status.set("Cache limpa");
+    });
+
+    panel.channel.on("setMode", (newMode) => {
+      mode.set(newMode);
     });
 
     panel.setContent(() => `
@@ -828,6 +834,7 @@ function init() {
           <button id="clearBtn" class="btn">Limpar</button>
           <button id="closeBtn" class="btn">Fechar</button>
         </div>
+        <button id="libraryBtn" class="btn">Biblioteca</button>
       </div>
 
       <div class="meta">
@@ -855,6 +862,10 @@ function init() {
       query: "",
       sourceFilter: "all"
     };
+    state.mode = "search";
+    state.libraryResults = [];
+    state.libraryLoading = false;
+    state.anilistUser = "";
 
     function esc(value) {
       return String(value == null ? "" : value)
@@ -863,6 +874,35 @@ function init() {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
+    }
+
+    async function fetchAniListLibrary(username) {
+      const userQuery = `query { User(name: "${username}") { id } }`;
+      const userRes = await fetch('https://graphql.anilist.co', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: userQuery })
+      });
+      const userData = await userRes.json();
+      if (!userData.data || !userData.data.User) throw new Error("Usuário não encontrado");
+      const userId = userData.data.User.id;
+      const listQuery = `query { MediaListCollection(userId: ${userId}, type: MANGA, status: CURRENT) { lists { entries { media { title { romaji english } coverImage { large } id chapters status } progress } } } }`;
+      const listRes = await fetch('https://graphql.anilist.co', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: listQuery })
+      });
+      const listData = await listRes.json();
+      if (!listData.data || !listData.data.MediaListCollection) throw new Error("Erro ao carregar lista");
+      const entries = listData.data.MediaListCollection.lists[0]?.entries || [];
+      return entries.map(entry => ({
+        id: entry.media.id,
+        title: entry.media.title.english || entry.media.title.romaji,
+        image: entry.media.coverImage.large,
+        chapters: entry.media.chapters,
+        progress: entry.progress,
+        source: 'AniList'
+      }));
     }
 
     function renderSkeletons() {
@@ -950,6 +990,13 @@ function init() {
         input.value = state.query || "";
       }
 
+      if (state.mode === "library") {
+        resultMeta.textContent = state.libraryResults.length + " mangas";
+        renderFilters([]);
+        app.innerHTML = renderLibrary();
+        return;
+      }
+
       const allResults = Array.isArray(state.results) ? state.results : [];
       const filteredResults =
         state.sourceFilter === "all"
@@ -1011,6 +1058,25 @@ function init() {
         '</div>';
     }
 
+    function renderLibrary() {
+      return `
+        <div style="padding: 20px;">
+          <div style="display: flex; gap: 10px; margin-bottom: 20px; align-items: center;">
+            <input id="anilistUser" placeholder="Nome de usuário AniList" value="${esc(state.anilistUser)}" style="flex: 1; height: 50px; border-radius: 16px; border: 1px solid rgba(255,255,255,.09); background: rgba(6, 10, 19, .42); color: white; padding: 0 16px; outline: none;" />
+            <button id="loadLibraryBtn" class="btn btn-primary">Carregar</button>
+            <button id="backToSearchBtn" class="btn">Voltar</button>
+          </div>
+          ${state.libraryLoading ? renderSkeletons() : ''}
+          <div id="libraryGrid">
+            ${state.libraryResults.length ? '<div class="grid">' + state.libraryResults.map((item) => {
+              const cover = item.image ? '<img class="cover" src="' + esc(item.image) + '" alt="' + esc(item.title) + '" />' : '<div class="fallback">Sem capa</div>';
+              return '<div class="card">' + cover + '<div class="info"><div class="title">' + esc(item.title) + '</div><div class="stats"><div class="chip">Progresso: ' + esc(item.progress) + '/' + esc(item.chapters || '?') + '</div><div class="chip source">AniList</div></div></div></div>';
+            }).join('') + '</div>' : '<div class="empty"><div class="empty-box"><img class="empty-logo" src="' + esc(BRAND_ICON) + '" alt="PT Scans" /><div style="font-size:18px;font-weight:800;color:#f4f8ff;margin-bottom:8px;">Biblioteca AniList</div><div style="font-size:13px;line-height:1.6;color:#9db1d3;">Insira seu nome de usuário e carregue sua biblioteca.</div></div></div>'}
+          </div>
+        </div>
+      `;
+    }
+
     document.getElementById("searchBtn").addEventListener("click", () => {
       window.webview.send("search", document.getElementById("query").value);
     });
@@ -1035,6 +1101,10 @@ function init() {
       window.webview.send("reloadProvider");
     });
 
+    document.getElementById("libraryBtn").addEventListener("click", () => {
+      window.webview.send("setMode", "library");
+    });
+
     window.webview.on("results", (value) => {
       state.results = value || [];
       render();
@@ -1055,7 +1125,33 @@ function init() {
       render();
     });
 
+    window.webview.on("mode", (value) => {
+      state.mode = value;
+      render();
+    });
+
     render();
+
+    document.getElementById("loadLibraryBtn")?.addEventListener("click", async () => {
+      const user = document.getElementById("anilistUser")?.value.trim();
+      if (!user) return;
+      state.anilistUser = user;
+      state.libraryLoading = true;
+      render();
+      try {
+        state.libraryResults = await fetchAniListLibrary(user);
+      } catch (e) {
+        state.libraryResults = [];
+        state.status = "Erro ao carregar biblioteca";
+      } finally {
+        state.libraryLoading = false;
+        render();
+      }
+    });
+
+    document.getElementById("backToSearchBtn")?.addEventListener("click", () => {
+      window.webview.send("setMode", "search");
+    });
   </script>
 </body>
 </html>
