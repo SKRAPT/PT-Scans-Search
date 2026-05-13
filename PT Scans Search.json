@@ -37,4 +37,5 @@
       }
     }
   },
-
+  "isDevelopment": false
+}
