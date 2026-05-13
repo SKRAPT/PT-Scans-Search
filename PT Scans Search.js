@@ -984,28 +984,39 @@ function init() {
       const backBtn = document.getElementById("backToSearchBtn");
       
       if (loadBtn) {
-        loadBtn.addEventListener("click", async () => {
-          const user = document.getElementById("anilistUser")?.value.trim();
-          if (!user) return;
+        loadBtn.onclick = async () => {
+          console.log("Botão Carregar clicado!");
+          const userInput = document.getElementById("anilistUser");
+          const user = userInput ? userInput.value.trim() : "";
+          console.log("Username:", user);
+          if (!user) {
+            console.log("Sem username, retornando");
+            return;
+          }
           state.anilistUser = user;
           state.libraryLoading = true;
           render();
           try {
+            console.log("Iniciando fetch para:", user);
             state.libraryResults = await fetchAniListLibrary(user);
+            console.log("Sucesso! Resultados:", state.libraryResults.length);
+            state.status = "Biblioteca carregada";
           } catch (e) {
+            console.error("Erro ao carregar biblioteca:", e);
             state.libraryResults = [];
-            state.status = "Erro ao carregar biblioteca";
+            state.status = "Erro: " + (e && e.message ? e.message : "Falha ao carregar");
           } finally {
             state.libraryLoading = false;
             render();
           }
-        });
+        };
       }
       
       if (backBtn) {
-        backBtn.addEventListener("click", () => {
+        backBtn.onclick = () => {
+          console.log("Botão Voltar clicado!");
           window.webview.send("setMode", "search");
-        });
+        };
       }
     }
 
