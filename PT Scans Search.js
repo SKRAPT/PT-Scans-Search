@@ -1066,12 +1066,12 @@ function init() {
           <div class="search-shell">
             <input id="query" placeholder="Pesquisar..." />
           </div>
-          <button id="searchBtn" class="btn btn-primary">Pesquisar</button>
-          <button id="reloadBtn" class="btn">Reload</button>
-          <button id="clearBtn" class="btn">Limpar</button>
-          <button id="closeBtn" class="btn">Fechar</button>
+          <button id="searchBtn" onclick="searchFunction()" class="btn btn-primary">Pesquisar</button>
+          <button id="reloadBtn" onclick="reloadFunction()" class="btn">Reload</button>
+          <button id="clearBtn" onclick="clearFunction()" class="btn">Limpar</button>
+          <button id="closeBtn" onclick="closeFunction()" class="btn">Fechar</button>
         </div>
-        <button id="libraryBtn" class="btn">Biblioteca</button>
+        <button id="libraryBtn" onclick="libraryFunction()" class="btn">Biblioteca</button>
       </div>
 
       <div class="meta">
@@ -1190,7 +1190,7 @@ function init() {
     }
 
     function renderProviderModal(mangaTitle, providerData) {
-      let html = '<div class="modal-backdrop" id="modalBackdrop"></div>';
+      let html = '<div class="modal-backdrop" id="modalBackdrop" onclick="closeModalFunction()"></div>';
       html += '<div class="modal-content">';
       html += '<div style="background: linear-gradient(135deg, rgba(14, 20, 36, .98), rgba(8, 12, 23, .95)); border: 1px solid rgba(255,255,255,.12); border-radius: 24px; max-width: 600px; max-height: 80vh; overflow-y: auto; padding: 28px; backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); box-shadow: 0 25px 60px rgba(0,0,0,.45), inset 0 1px 1px rgba(255,255,255,.08);">';
       html += '<div style="font-size: 22px; font-weight: 900; color: #f7fbff; margin-bottom: 8px; background: linear-gradient(135deg, #5ea2ff, #9b7cff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Providers disponíveis</div>';
@@ -1215,7 +1215,7 @@ function init() {
         html += '</div>';
       }
       
-      html += '<button id="closeModal" class="btn btn-primary" style="width: 100%; margin-top: 20px; animation: slideInUp .4s ease both; animation-delay: ' + (sources.length * 0.08) + 's">Fechar</button>';
+      html += '<button id="closeModal" onclick="closeModalFunction()" class="btn btn-primary" style="width: 100%; margin-top: 20px; animation: slideInUp .4s ease both; animation-delay: ' + (sources.length * 0.08) + 's">Fechar</button>';
       html += '</div></div>';
       
       return html;
@@ -1340,19 +1340,12 @@ function init() {
             class="filter-chip \${active}"
             data-source="\${esc(item.key)}"
             type="button"
+            onclick="filterFunction('\${esc(item.key)}')"
           >
             \${esc(item.label)} (\${count})
           </button>
         \`;
       }).join("");
-
-      wrap.querySelectorAll(".filter-chip").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          console.log("filter-chip clicked", btn.dataset.source);
-          state.sourceFilter = btn.dataset.source || "all";
-          render();
-        });
-      });
     }
 
     function attachLibraryListeners() {
@@ -1421,7 +1414,6 @@ function init() {
         resultMeta.textContent = state.libraryResults.length + " mangas";
         renderFilters([]);
         app.innerHTML = renderLibrary();
-        attachLibraryListeners();
         return;
       }
 
@@ -1490,8 +1482,8 @@ function init() {
       let html = '<div style="padding: 20px;">';
       html += '<div style="display: flex; gap: 10px; margin-bottom: 20px; align-items: center;">';
       html += '<input id="anilistUser" placeholder="Nome de usuário AniList" value="' + esc(state.anilistUser) + '" style="flex: 1; height: 50px; border-radius: 16px; border: 1px solid rgba(255,255,255,.09); background: rgba(6, 10, 19, .42); color: white; padding: 0 16px; outline: none; font-size: 14px; transition: all .3s cubic-bezier(0.34, 1.56, 0.64, 1); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);" onmouseover="this.style.borderColor=\'rgba(94,162,255,.3)\'; this.style.background=\'rgba(7, 12, 24, .5)\';" onmouseout="this.style.borderColor=\'rgba(255,255,255,.09)\'; this.style.background=\'rgba(6, 10, 19, .42)\';" />';
-      html += '<button id="loadLibraryBtn" class="btn btn-primary">Carregar</button>';
-      html += '<button id="backToSearchBtn" class="btn">Voltar</button>';
+      html += '<button id="loadLibraryBtn" onclick="loadLibraryFunction()" class="btn btn-primary">Carregar</button>';
+      html += '<button id="backToSearchBtn" onclick="backToSearchFunction()" class="btn">Voltar</button>';
       html += '</div>';
       
       if (state.libraryLoading) {
@@ -1511,7 +1503,7 @@ function init() {
           html += '<div class="info"><div class="title">' + esc(item.title) + '</div>';
           html += '<div class="stats"><div class="chip">Progresso: ' + esc(String(item.progress)) + '/' + esc(chapterText) + '</div>';
           html += '<div class="chip source">AniList</div></div>';
-          html += '<button class="providerBtn" data-title="' + esc(item.title) + '" style="margin-top: 8px; width: 100%; background: linear-gradient(135deg, rgba(94,162,255,.15), rgba(94,162,255,.08)); border: 1px solid rgba(94,162,255,.3); color: #5ea2ff; padding: 8px; border-radius: 12px; cursor: pointer; font-weight: 800; font-size: 12px; transition: all .3s cubic-bezier(0.34, 1.56, 0.64, 1); position: relative; overflow: hidden;" onmouseover="this.style.background=\'linear-gradient(135deg, rgba(94,162,255,.25), rgba(94,162,255,.15))\'; this.style.boxShadow=\'0 8px 16px rgba(94,162,255,.2), inset 0 1px 2px rgba(255,255,255,.05)\'; this.style.transform=\'translateY(-1px)\';" onmouseout="this.style.background=\'linear-gradient(135deg, rgba(94,162,255,.15), rgba(94,162,255,.08))\'; this.style.boxShadow=\'none\'; this.style.transform=\'translateY(0)\';">Ver Providers</button>';
+          html += '<button class="providerBtn" data-title="' + esc(item.title) + '" onclick="openProviderModalFunction(\'' + esc(item.title) + '\')" style="margin-top: 8px; width: 100%; background: linear-gradient(135deg, rgba(94,162,255,.15), rgba(94,162,255,.08)); border: 1px solid rgba(94,162,255,.3); color: #5ea2ff; padding: 8px; border-radius: 12px; cursor: pointer; font-weight: 800; font-size: 12px; transition: all .3s cubic-bezier(0.34, 1.56, 0.64, 1); position: relative; overflow: hidden;" onmouseover="this.style.background=\'linear-gradient(135deg, rgba(94,162,255,.25), rgba(94,162,255,.15))\'; this.style.boxShadow=\'0 8px 16px rgba(94,162,255,.2), inset 0 1px 2px rgba(255,255,255,.05)\'; this.style.transform=\'translateY(-1px)\';" onmouseout="this.style.background=\'linear-gradient(135deg, rgba(94,162,255,.15), rgba(94,162,255,.08))\'; this.style.boxShadow=\'none\'; this.style.transform=\'translateY(0)\';">Ver Providers</button>';
           html += '</div></div>';
         }
         html += '</div>';
@@ -1527,40 +1519,79 @@ function init() {
       return html;
     }
 
-    document.getElementById("searchBtn").addEventListener("click", () => {
+    function searchFunction() {
       console.log("searchBtn clicked");
-      console.log("searchBtn element:", document.getElementById("searchBtn"));
       window.webview.send("search", document.getElementById("query").value);
-    });
+    }
 
-    document.getElementById("query").onkeydown = (e) => {
-      if (e.key === "Enter") {
-        console.log("query Enter pressed");
-        window.webview.send("search", document.getElementById("query").value);
-      }
-    };
-
-    document.getElementById("clearBtn").addEventListener("click", () => {
+    function clearFunction() {
       console.log("clearBtn clicked");
       document.getElementById("query").value = "";
       state.sourceFilter = "all";
       window.webview.send("clear");
-    });
+    }
 
-    document.getElementById("closeBtn").addEventListener("click", () => {
+    function closeFunction() {
       console.log("closeBtn clicked");
       window.webview.send("hide");
-    });
+    }
 
-    document.getElementById("reloadBtn").addEventListener("click", () => {
+    function reloadFunction() {
       console.log("reloadBtn clicked");
       window.webview.send("reloadProvider");
-    });
+    }
 
-    document.getElementById("libraryBtn").addEventListener("click", () => {
+    function libraryFunction() {
       console.log("libraryBtn clicked");
       window.webview.send("setMode", "library");
-    });
+    }
+
+    function loadLibraryFunction() {
+      console.log("loadLibraryBtn clicked");
+      const userInput = document.getElementById("anilistUser");
+      const user = userInput ? userInput.value.trim() : "";
+      if (!user) {
+        state.status = "Por favor, entra um nome de usuário";
+        render();
+        return;
+      }
+      state.anilistUser = user;
+      state.libraryLoading = true;
+      state.status = "A carregar biblioteca de " + user + "...";
+      render();
+      fetchAniListLibrary(user).then(results => {
+        state.libraryResults = results;
+        state.status = "Biblioteca carregada: " + results.length + " mangas";
+        state.libraryLoading = false;
+        render();
+      }).catch(e => {
+        state.libraryResults = [];
+        state.status = "Erro: " + (e && e.message ? e.message : "Falha ao carregar");
+        state.libraryLoading = false;
+        render();
+      });
+    }
+
+    function backToSearchFunction() {
+      console.log("backToSearchBtn clicked");
+      window.webview.send("setMode", "search");
+    }
+
+    function openProviderModalFunction(title) {
+      console.log("providerBtn clicked for", title);
+      openProviderModal(title);
+    }
+
+    function closeModalFunction() {
+      console.log("closeModal or backdrop clicked");
+      render();
+    }
+
+    function filterFunction(source) {
+      console.log("filter-chip clicked", source);
+      state.sourceFilter = source || "all";
+      render();
+    }
 
     window.webview.on("results", (value) => {
       state.results = value || [];
