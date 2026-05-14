@@ -1233,12 +1233,14 @@ function init() {
         const closeBtn = document.getElementById("closeModal");
         if (closeBtn) {
           closeBtn.onclick = () => {
+            console.log("closeModal clicked");
             render();
           };
         }
         const backdrop = document.getElementById("modalBackdrop");
         if (backdrop) {
           backdrop.onclick = () => {
+            console.log("modalBackdrop clicked");
             render();
           };
         }
@@ -1345,6 +1347,7 @@ function init() {
 
       wrap.querySelectorAll(".filter-chip").forEach((btn) => {
         btn.onclick = () => {
+          console.log("filter-chip clicked", btn.dataset.source);
           state.sourceFilter = btn.dataset.source || "all";
           render();
         };
@@ -1358,6 +1361,7 @@ function init() {
       
       if (loadBtn) {
         loadBtn.onclick = async () => {
+          console.log("loadLibraryBtn clicked");
           const userInput = document.getElementById("anilistUser");
           const user = userInput ? userInput.value.trim() : "";
           if (!user) {
@@ -1384,6 +1388,7 @@ function init() {
       
       if (backBtn) {
         backBtn.onclick = () => {
+          console.log("backToSearchBtn clicked");
           window.webview.send("setMode", "search");
         };
       }
@@ -1392,6 +1397,7 @@ function init() {
         var btn = providerBtns[i];
         btn.onclick = (function(title) {
           return async () => {
+            console.log("providerBtn clicked for", title);
             await openProviderModal(title);
           };
         })(btn.dataset.title);
@@ -1521,30 +1527,36 @@ function init() {
     }
 
     document.getElementById("searchBtn").onclick = () => {
+      console.log("searchBtn clicked");
       window.webview.send("search", document.getElementById("query").value);
     };
 
     document.getElementById("query").onkeydown = (e) => {
       if (e.key === "Enter") {
+        console.log("query Enter pressed");
         window.webview.send("search", document.getElementById("query").value);
       }
     };
 
     document.getElementById("clearBtn").onclick = () => {
+      console.log("clearBtn clicked");
       document.getElementById("query").value = "";
       state.sourceFilter = "all";
       window.webview.send("clear");
     };
 
     document.getElementById("closeBtn").onclick = () => {
+      console.log("closeBtn clicked");
       window.webview.send("hide");
     };
 
     document.getElementById("reloadBtn").onclick = () => {
+      console.log("reloadBtn clicked");
       window.webview.send("reloadProvider");
     };
 
     document.getElementById("libraryBtn").onclick = () => {
+      console.log("libraryBtn clicked");
       window.webview.send("setMode", "library");
     };
 
