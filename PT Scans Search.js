@@ -13,8 +13,8 @@ function init() {
     const panel = ctx.newWebview({
       slot: "fixed",
       width: "100%",
-      maxWidth: "1280px",
-      height: "86vh",
+       maxWidth: "900px",
+      height: "60vh",
       hidden: true,
       zIndex: 60,
       window: {
