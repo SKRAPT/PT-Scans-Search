@@ -1519,34 +1519,38 @@ function init() {
       return html;
     }
 
-    function searchFunction() {
+    window.searchFunction = function() {
       console.log("searchBtn clicked");
+      state.status = "Search clicked";
+      render();
       window.webview.send("search", document.getElementById("query").value);
-    }
+    };
 
-    function clearFunction() {
+    window.clearFunction = function() {
       console.log("clearBtn clicked");
       document.getElementById("query").value = "";
       state.sourceFilter = "all";
+      state.status = "Clear clicked";
+      render();
       window.webview.send("clear");
-    }
+    };
 
-    function closeFunction() {
+    window.closeFunction = function() {
       console.log("closeBtn clicked");
       window.webview.send("hide");
-    }
+    };
 
-    function reloadFunction() {
+    window.reloadFunction = function() {
       console.log("reloadBtn clicked");
       window.webview.send("reloadProvider");
-    }
+    };
 
-    function libraryFunction() {
+    window.libraryFunction = function() {
       console.log("libraryBtn clicked");
       window.webview.send("setMode", "library");
-    }
+    };
 
-    function loadLibraryFunction() {
+    window.loadLibraryFunction = function() {
       console.log("loadLibraryBtn clicked");
       const userInput = document.getElementById("anilistUser");
       const user = userInput ? userInput.value.trim() : "";
@@ -1570,28 +1574,28 @@ function init() {
         state.libraryLoading = false;
         render();
       });
-    }
+    };
 
-    function backToSearchFunction() {
+    window.backToSearchFunction = function() {
       console.log("backToSearchBtn clicked");
       window.webview.send("setMode", "search");
-    }
+    };
 
-    function openProviderModalFunction(title) {
+    window.openProviderModalFunction = function(title) {
       console.log("providerBtn clicked for", title);
       openProviderModal(title);
-    }
+    };
 
-    function closeModalFunction() {
+    window.closeModalFunction = function() {
       console.log("closeModal or backdrop clicked");
       render();
-    }
+    };
 
-    function filterFunction(source) {
+    window.filterFunction = function(source) {
       console.log("filter-chip clicked", source);
       state.sourceFilter = source || "all";
       render();
-    }
+    };
 
     window.webview.on("results", (value) => {
       state.results = value || [];
