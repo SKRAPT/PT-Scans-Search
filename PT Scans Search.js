@@ -14,7 +14,7 @@ function init() {
       slot: "fixed",
       width: "100%",
        maxWidth: "900px",
-      height: "60vh",
+      height: "90vh",
       hidden: true,
       zIndex: 60,
       window: {
