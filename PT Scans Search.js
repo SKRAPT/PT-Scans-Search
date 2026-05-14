@@ -399,10 +399,10 @@ function init() {
       position: absolute;
       inset: -20%;
       background: conic-gradient(from 180deg, transparent, rgba(255,255,255,.18), transparent 35%);
-      animation: spin 6s linear infinite;
+      animation: spinConic 6s linear infinite;
     }
 
-    @keyframes spin {
+    @keyframes spinConic {
       from { transform: rotate(0); }
       to { transform: rotate(360deg); }
     }
@@ -498,16 +498,6 @@ function init() {
       overflow: hidden;
     }
 
-    .btn::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(circle at var(--x, 50%) var(--y, 50%), rgba(255,255,255,.2), transparent 60%);
-      opacity: 0;
-      transition: opacity .3s ease;
-      pointer-events: none;
-    }
-
     .btn:hover {
       transform: translateY(-2px) scale(1.02);
       background: rgba(255,255,255,.09);
@@ -563,9 +553,9 @@ function init() {
     }
 
     @keyframes pulse {
-      0% { transform: scale(.88); opacity: .6; box-shadow: 0 0 18px rgba(94,162,255,.8), inset 0 0 8px rgba(255,255,255,.4); }
-      50% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 24px rgba(94,162,255,1), inset 0 0 12px rgba(255,255,255,.6); }
-      100% { transform: scale(.88); opacity: .6; box-shadow: 0 0 18px rgba(94,162,255,.8), inset 0 0 8px rgba(255,255,255,.4); }
+      0% { transform: scale(.88); opacity: .6; }
+      50% { transform: scale(1.2); opacity: 1; }
+      100% { transform: scale(.88); opacity: .6; }
     }
 
     .pill {
@@ -598,37 +588,19 @@ function init() {
       font-size: 12px;
       font-weight: 800;
       transition: all .25s cubic-bezier(0.34, 1.56, 0.64, 1);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .filter-chip::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,.1), transparent);
-      transform: translateX(-100%);
-      transition: transform .5s ease;
     }
 
     .filter-chip:hover {
       background: rgba(255,255,255,.08);
       border-color: rgba(255,255,255,.15);
       transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(0,0,0,.15);
-    }
-
-    .filter-chip:hover::before {
-      transform: translateX(100%);
     }
 
     .filter-chip.active {
       background: linear-gradient(135deg, rgba(59,130,246,.25), rgba(147,51,234,.2));
       border-color: rgba(94,162,255,.5);
       color: #ffffff;
-      box-shadow: 0 12px 30px rgba(59,130,246,.22), inset 0 1px 2px rgba(255,255,255,.08);
+      box-shadow: 0 12px 30px rgba(59,130,246,.22);
       transform: translateY(-3px);
     }
 
@@ -641,13 +613,9 @@ function init() {
       background: rgba(8, 12, 22, .5);
       border-radius: 0 0 32px 32px;
       border-top: 1px solid rgba(255,255,255,.06);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
     }
 
-    .content::-webkit-scrollbar {
-      width: 10px;
-    }
-
+    .content::-webkit-scrollbar { width: 10px; }
     .content::-webkit-scrollbar-thumb {
       background: rgba(255,255,255,.10);
       border-radius: 999px;
@@ -666,68 +634,26 @@ function init() {
       padding: 14px;
       min-height: 190px;
       border-radius: 24px;
-      background:
-        linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.025)),
-        rgba(13,18,30,.72);
+      background: linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.025)), rgba(13,18,30,.72);
       border: 1px solid rgba(255,255,255,.08);
       box-shadow: 0 8px 24px rgba(0,0,0,.2), inset 0 1px 1px rgba(255,255,255,.05);
-      transition: transform .3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color .3s ease, box-shadow .3s ease, background .3s ease;
+      transition: transform .3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color .3s ease, box-shadow .3s ease;
       overflow: hidden;
       animation: cardIn .35s ease both;
     }
-
-    .card:nth-child(1) { animation-delay: .02s; }
-    .card:nth-child(2) { animation-delay: .04s; }
-    .card:nth-child(3) { animation-delay: .06s; }
-    .card:nth-child(4) { animation-delay: .08s; }
-    .card:nth-child(5) { animation-delay: .10s; }
-    .card:nth-child(6) { animation-delay: .12s; }
 
     @keyframes cardIn {
       from { opacity: 0; transform: translateY(12px) scale(.985); }
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
-    .card::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,.05) 20%, transparent 42%);
-      transform: translateX(-120%);
-      transition: transform .65s ease;
-      pointer-events: none;
-    }
-
-    .card::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(circle at 30% 30%, rgba(94,162,255,.1), transparent 50%);
-      opacity: 0;
-      transition: opacity .3s ease;
-      pointer-events: none;
-      border-radius: 24px;
-    }
-
     .card:hover {
       transform: translateY(-6px) scale(1.01);
       border-color: rgba(110, 170, 255, .3);
       box-shadow: 0 20px 50px rgba(37,99,235,.25), inset 0 1px 1px rgba(255,255,255,.08);
-      background:
-        linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03)),
-        rgba(13,18,30,.8);
     }
 
-    .card:hover::before {
-      transform: translateX(140%);
-    }
-
-    .card:hover::after {
-      opacity: 1;
-    }
-
-    .cover,
-    .fallback {
+    .cover, .fallback {
       width: 106px;
       height: 150px;
       border-radius: 18px;
@@ -743,9 +669,7 @@ function init() {
 
     .fallback {
       border: 1px solid rgba(255,255,255,.07);
-      background:
-        radial-gradient(circle at 30% 20%, rgba(94,162,255,.20), transparent 28%),
-        linear-gradient(180deg, rgba(20,27,43,.95), rgba(9,12,20,.95));
+      background: linear-gradient(180deg, rgba(20,27,43,.95), rgba(9,12,20,.95));
       display: flex;
       align-items: center;
       justify-content: center;
@@ -793,15 +717,6 @@ function init() {
       border: 1px solid rgba(255,255,255,.06);
       background: rgba(255,255,255,.05);
       color: #d8e4fb;
-      transition: all .25s cubic-bezier(0.34, 1.56, 0.64, 1);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-    }
-
-    .chip:hover {
-      background: rgba(255,255,255,.08);
-      border-color: rgba(255,255,255,.12);
-      transform: translateY(-1px);
     }
 
     .chip.ok {
@@ -810,34 +725,16 @@ function init() {
       border-color: rgba(34,197,94,.25);
     }
 
-    .chip.ok:hover {
-      background: linear-gradient(135deg, rgba(34,197,94,.25), rgba(34,197,94,.15));
-      border-color: rgba(34,197,94,.4);
-      box-shadow: 0 4px 12px rgba(34,197,94,.2);
-    }
-
     .chip.no {
       color: #ffd0d8;
       background: linear-gradient(135deg, rgba(239,68,68,.15), rgba(239,68,68,.08));
       border-color: rgba(239,68,68,.25);
     }
 
-    .chip.no:hover {
-      background: linear-gradient(135deg, rgba(239,68,68,.25), rgba(239,68,68,.15));
-      border-color: rgba(239,68,68,.4);
-      box-shadow: 0 4px 12px rgba(239,68,68,.2);
-    }
-
     .chip.source {
       color: #d5e7ff;
       background: linear-gradient(135deg, rgba(59,130,246,.15), rgba(59,130,246,.08));
       border-color: rgba(59,130,246,.25);
-    }
-
-    .chip.source:hover {
-      background: linear-gradient(135deg, rgba(59,130,246,.25), rgba(59,130,246,.15));
-      border-color: rgba(59,130,246,.4);
-      box-shadow: 0 4px 12px rgba(59,130,246,.2);
     }
 
     .sub {
@@ -855,29 +752,14 @@ function init() {
       min-height: 380px;
       border-radius: 26px;
       border: 2px dashed rgba(94,162,255,.2);
-      background:
-        radial-gradient(circle at top, rgba(94,162,255,.08), transparent 36%),
-        linear-gradient(135deg, rgba(255,255,255,.02), rgba(255,255,255,.01));
+      background: radial-gradient(circle at top, rgba(94,162,255,.08), transparent 36%), linear-gradient(135deg, rgba(255,255,255,.02), rgba(255,255,255,.01));
       color: #9db1d3;
       text-align: center;
       padding: 32px;
       animation: fadeUp .4s ease;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      transition: all .3s ease;
     }
 
-    .empty:hover {
-      border-color: rgba(94,162,255,.35);
-      background:
-        radial-gradient(circle at top, rgba(94,162,255,.12), transparent 36%),
-        linear-gradient(135deg, rgba(255,255,255,.03), rgba(255,255,255,.015));
-      box-shadow: 0 8px 24px rgba(94,162,255,.08);
-    }
-
-    .empty-box {
-      max-width: 460px;
-    }
+    .empty-box { max-width: 460px; }
 
     .empty-logo {
       width: 70px;
@@ -905,9 +787,7 @@ function init() {
       min-height: 190px;
       border-radius: 24px;
       overflow: hidden;
-      background:
-        linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02)),
-        rgba(13,18,30,.6);
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02)), rgba(13,18,30,.6);
       border: 1px solid rgba(255,255,255,.07);
     }
 
@@ -917,46 +797,11 @@ function init() {
       inset: 0;
       transform: translateX(-100%);
       background: linear-gradient(90deg, transparent, rgba(255,255,255,.08), transparent);
-      animation: skeleton 1.4s infinite;
+      animation: skeletonSlide 1.4s infinite;
     }
 
-    @keyframes skeleton {
+    @keyframes skeletonSlide {
       100% { transform: translateX(100%); }
-    }
-
-    .spinner {
-      width: 24px;
-      height: 24px;
-      border: 3px solid rgba(94,162,255,.2);
-      border-top-color: #5ea2ff;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    @keyframes slideInLeft {
-      from {
-        opacity: 0;
-        transform: translateX(-20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateX(0);
-      }
-    }
-
-    @keyframes slideInUp {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
     }
 
     .modal-backdrop {
@@ -965,14 +810,7 @@ function init() {
       background: rgba(0,0,0,.5);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
-      opacity: 0;
-      animation: backdropFadeIn .3s ease forwards;
       z-index: 999;
-    }
-
-    @keyframes backdropFadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
     }
 
     .modal-content {
@@ -980,23 +818,12 @@ function init() {
       top: 50%;
       left: 50%;
       width: min(92vw, 620px);
-      transform: translate(-50%, -50%) scale(.92);
-      animation: modalSlideIn .35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      transform: translate(-50%, -50%);
       z-index: 1000;
     }
 
-    @keyframes modalSlideIn {
-      from {
-        opacity: 0;
-        transform: translate(-50%, -50%) scale(.85);
-      }
-      to {
-        opacity: 1;
-        transform: translate(-50%, -50%) scale(1);
-      }
-    }
-
-    .input-field {
+    .anilist-input {
+      width: 100%;
       height: 50px;
       border-radius: 16px;
       border: 1px solid rgba(255,255,255,.09);
@@ -1006,49 +833,50 @@ function init() {
       outline: none;
       font-size: 14px;
       font-family: inherit;
-      transition: all .3s cubic-bezier(0.34, 1.56, 0.64, 1);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
+      transition: border-color .3s ease, background .3s ease;
     }
 
-    .input-field:focus {
+    .anilist-input:focus {
       border-color: rgba(94,162,255,.6);
-      box-shadow: 0 0 0 4px rgba(94,162,255,.15), inset 0 1px 2px rgba(0,0,0,.2);
       background: rgba(7, 12, 24, .65);
-      transform: translateY(-2px);
+      box-shadow: 0 0 0 4px rgba(94,162,255,.15);
     }
 
-    .input-field::placeholder {
+    .anilist-input::placeholder {
       color: rgba(155,177,227,.6);
-      transition: color .2s ease;
     }
 
-    .input-field:focus::placeholder {
-      color: rgba(155,177,227,.4);
+    .provider-btn {
+      margin-top: 8px;
+      width: 100%;
+      background: linear-gradient(135deg, rgba(94,162,255,.15), rgba(94,162,255,.08));
+      border: 1px solid rgba(94,162,255,.3);
+      color: #5ea2ff;
+      padding: 8px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 800;
+      font-size: 12px;
+      transition: all .3s ease;
+    }
+
+    .provider-btn:hover {
+      background: linear-gradient(135deg, rgba(94,162,255,.25), rgba(94,162,255,.15));
+      box-shadow: 0 8px 16px rgba(94,162,255,.2);
+      transform: translateY(-1px);
     }
 
     @media (max-width: 920px) {
-      .topbar {
-        flex-direction: column;
-        align-items: stretch;
-      }
-      .searchbar {
-        width: 100%;
-        flex-wrap: wrap;
-      }
-      .btn {
-        flex: 1;
-      }
-      .content {
-        height: calc(100% - 230px);
-      }
+      .topbar { flex-direction: column; align-items: stretch; }
+      .searchbar { width: 100%; flex-wrap: wrap; }
+      .btn { flex: 1; }
+      .content { height: calc(100% - 230px); }
     }
   </style>
 </head>
 <body>
   <div class="overlay">
     <div class="blob"></div>
-
     <div class="window">
       <div class="shine"></div>
 
@@ -1066,12 +894,12 @@ function init() {
           <div class="search-shell">
             <input id="query" placeholder="Pesquisar..." />
           </div>
-          <button id="searchBtn" onclick="searchFunction()" class="btn btn-primary">Pesquisar</button>
-          <button id="reloadBtn" onclick="reloadFunction()" class="btn">Reload</button>
-          <button id="clearBtn" onclick="clearFunction()" class="btn">Limpar</button>
-          <button id="closeBtn" onclick="closeFunction()" class="btn">Fechar</button>
+          <button id="searchBtn" class="btn btn-primary">Pesquisar</button>
+          <button id="reloadBtn" class="btn">Reload</button>
+          <button id="clearBtn" class="btn">Limpar</button>
+          <button id="closeBtn" class="btn">Fechar</button>
         </div>
-        <button id="libraryBtn" onclick="libraryFunction()" class="btn">Biblioteca</button>
+        <button id="libraryBtn" class="btn">Biblioteca</button>
       </div>
 
       <div class="meta">
@@ -1091,20 +919,21 @@ function init() {
   </div>
 
   <script>
-    console.log("Script started");
     const BRAND_ICON = ${JSON.stringify(BRAND_ICON)};
+
     const state = {
       results: [],
       status: "Pronto",
       loading: false,
       query: "",
-      sourceFilter: "all"
+      sourceFilter: "all",
+      mode: "search",
+      libraryResults: [],
+      libraryLoading: false,
+      anilistUser: ""
     };
-    state.mode = "search";
-    state.libraryResults = [];
-    state.libraryLoading = false;
-    state.anilistUser = "";
 
+    /* ── utilidades ── */
     function esc(value) {
       return String(value == null ? "" : value)
         .replace(/&/g, "&amp;")
@@ -1122,206 +951,91 @@ function init() {
     }
 
     function sourceLabel(source) {
-      if (source === "mangaflix") return "MangaFlix";
-      if (source === "mangalivre") return "MangaLivre";
-      if (source === "hipercool") return "HiperCool";
-      if (source === "tiamanhwa") return "TiaManhwa";
-      if (source === "mangafire") return "MangaFire";
-      return source || "Desconhecido";
+      const map = { mangaflix: "MangaFlix", mangalivre: "MangaLivre", hipercool: "HiperCool", tiamanhwa: "TiaManhwa", mangafire: "MangaFire" };
+      return map[source] || source || "Desconhecido";
     }
 
     function stripProviderPrefix(title) {
       return String(title || "")
-        .replace(/^\s*\[(MangaFlix|MangaLivre|HiperCool|TiaManhwa|MangaFire)\]\s*/i, "")
-        .replace(/^\s*(MangaFlix|MangaLivre|HiperCool|TiaManhwa|MangaFire)\s*[•\-:]\s*/i, "")
+        .replace(/^\\s*\\[(MangaFlix|MangaLivre|HiperCool|TiaManhwa|MangaFire)\\]\\s*/i, "")
+        .replace(/^\\s*(MangaFlix|MangaLivre|HiperCool|TiaManhwa|MangaFire)\\s*[•\\-:]\\s*/i, "")
         .trim();
     }
 
-    function safeArray(value) {
-      return Array.isArray(value) ? value : [];
-    }
-
-    async function getProvider() {
-      const PROVIDER_MANIFEST_URL = "https://raw.githubusercontent.com/SKRAPT/PT-Scans/refs/heads/main/ptscans-provider.json";
-      const res = await fetch(PROVIDER_MANIFEST_URL, {
-        headers: { Accept: "application/json, text/plain, */*" }
-      });
-      if (!res.ok) throw new Error("Falha ao carregar provider: HTTP " + res.status);
-      
-      const manifest = await res.json();
-      const payload = String(manifest && manifest.payload ? manifest.payload : "").trim();
-      if (!payload) throw new Error("Provider sem payload.");
-      
-      const ProviderClass = new Function(payload + "\nreturn Provider;")();
-      const provider = new ProviderClass();
-      provider.getDisableNsfwConfig = () => false;
-      return provider;
-    }
-
-    async function searchMangaProviders(title) {
-      try {
-        const provider = await getProvider();
-        const found = safeArray(await provider.search({ query: title }));
-        
-        const grouped = {};
-        for (let i = 0; i < found.length; i++) {
-          var item = found[i];
-          var src = splitSourceId(item.id).source;
-          
-          if (!grouped[src]) {
-            grouped[src] = { title: sourceLabel(src), items: [] };
-          }
-          
-          var chapters = [];
-          try {
-            chapters = safeArray(await provider.findChapters(item.id));
-          } catch (e) {}
-          
-          grouped[src].items.push({
-            title: stripProviderPrefix(item.title),
-            chapters: chapters.length
-          });
-        }
-        
-        return grouped;
-      } catch (e) {
-        throw new Error("Erro ao pesquisar providers: " + (e && e.message ? e.message : "falha"));
-      }
-    }
-
-    function renderProviderModal(mangaTitle, providerData) {
-      let html = '<div class="modal-backdrop" id="modalBackdrop" onclick="closeModalFunction()"></div>';
-      html += '<div class="modal-content">';
-      html += '<div style="background: linear-gradient(135deg, rgba(14, 20, 36, .98), rgba(8, 12, 23, .95)); border: 1px solid rgba(255,255,255,.12); border-radius: 24px; max-width: 600px; max-height: 80vh; overflow-y: auto; padding: 28px; backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); box-shadow: 0 25px 60px rgba(0,0,0,.45), inset 0 1px 1px rgba(255,255,255,.08);">';
-      html += '<div style="font-size: 22px; font-weight: 900; color: #f7fbff; margin-bottom: 8px; background: linear-gradient(135deg, #5ea2ff, #9b7cff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Providers disponíveis</div>';
-      html += '<div style="font-size: 14px; color: #98a9c7; margin-bottom: 24px; line-height: 1.5;">' + esc(mangaTitle) + '</div>';
-      
-      const sources = Object.keys(providerData);
-      for (let i = 0; i < sources.length; i++) {
-        var src = sources[i];
-        var data = providerData[src];
-        
-        html += '<div style="margin-bottom: 16px; padding: 14px; background: linear-gradient(135deg, rgba(255,255,255,.05), rgba(255,255,255,.02)); border-radius: 14px; border-left: 4px solid #5ea2ff; border: 1px solid rgba(94,162,255,.2); transition: all .3s ease; animation: slideInLeft .4s ease both; animation-delay: ' + (i * 0.08) + 's">';
-        html += '<div style="font-size: 14px; font-weight: 900; color: #d5e7ff; margin-bottom: 10px;">' + esc(data.title) + '</div>';
-        
-        for (let j = 0; j < data.items.length; j++) {
-          var item = data.items[j];
-          html += '<div style="font-size: 12px; color: #98a9c7; padding: 6px 0; display: flex; justify-content: space-between; align-items: center;">';
-          html += '<span>' + esc(item.title) + '</span>';
-          html += '<span style="color: #5ea2ff; font-weight: 900; background: rgba(94,162,255,.15); padding: 3px 8px; border-radius: 8px;">' + item.chapters + ' caps</span>';
-          html += '</div>';
-        }
-        
-        html += '</div>';
-      }
-      
-      html += '<button id="closeModal" onclick="closeModalFunction()" class="btn btn-primary" style="width: 100%; margin-top: 20px; animation: slideInUp .4s ease both; animation-delay: ' + (sources.length * 0.08) + 's">Fechar</button>';
-      html += '</div></div>';
-      
-      return html;
-    }
-
-    async function openProviderModal(mangaTitle) {
-      state.status = "A pesquisar em providers...";
-      render();
-      
-      try {
-        const providerData = await searchMangaProviders(mangaTitle);
-        
-        const app = document.getElementById("app");
-        app.innerHTML = renderProviderModal(mangaTitle, providerData);
-        
-        const closeBtn = document.getElementById("closeModal");
-        if (closeBtn) {
-          closeBtn.addEventListener("click", () => {
-            console.log("closeModal clicked");
-            render();
-          });
-        }
-        const backdrop = document.getElementById("modalBackdrop");
-        if (backdrop) {
-          backdrop.addEventListener("click", () => {
-            console.log("modalBackdrop clicked");
-            render();
-          });
-        }
-      } catch (e) {
-        state.status = "Erro: " + (e && e.message ? e.message : "Falha ao pesquisar");
-        render();
-      }
-    }
-
-    async function fetchAniListLibrary(username) {
-      const escapedName = username.replace(/"/g, '\\"');
-      const userQuery = 'query { User(name: "' + escapedName + '") { id } }';
-      const userRes = await fetch('https://graphql.anilist.co', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: userQuery })
-      });
-      const userData = await userRes.json();
-      if (!userData.data || !userData.data.User) throw new Error("Usuário não encontrado");
-      const userId = userData.data.User.id;
-      const listQuery = 'query { MediaListCollection(userId: ' + userId + ', type: MANGA, status: CURRENT) { lists { entries { media { title { romaji english } coverImage { large } id chapters status } progress } } } }';
-      const listRes = await fetch('https://graphql.anilist.co', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: listQuery })
-      });
-      const listData = await listRes.json();
-      if (!listData.data || !listData.data.MediaListCollection) throw new Error("Erro ao carregar lista");
-      const entries = listData.data.MediaListCollection.lists[0]?.entries || [];
-      return entries.map(entry => ({
-        id: entry.media.id,
-        title: entry.media.title.english || entry.media.title.romaji,
-        image: entry.media.coverImage.large,
-        chapters: entry.media.chapters,
-        progress: entry.progress,
-        source: 'AniList'
-      }));
-    }
-
-    function renderSkeletons() {
-      return (
-        '<div class="loading-grid">' +
-          Array.from({ length: 6 }).map(() =>
-            '<div class="skeleton"></div>'
-          ).join('') +
-        '</div>'
-      );
-    }
+    function safeArray(v) { return Array.isArray(v) ? v : []; }
 
     function getItemSource(item) {
       if (item.rawSource) return item.rawSource;
-      const rawId = String(item.id || "");
-      const idx = rawId.indexOf(":");
-      return idx !== -1 ? rawId.slice(0, idx) : "unknown";
+      const raw = String(item.id || "");
+      const idx = raw.indexOf(":");
+      return idx !== -1 ? raw.slice(0, idx) : "unknown";
+    }
+
+    /* ── provider ── */
+    let providerCache = null;
+
+    async function getProvider() {
+      if (providerCache) return providerCache;
+      const res = await fetch("https://raw.githubusercontent.com/SKRAPT/PT-Scans/refs/heads/main/ptscans-provider.json", {
+        headers: { Accept: "application/json, text/plain, */*" }
+      });
+      if (!res.ok) throw new Error("Falha ao carregar provider: HTTP " + res.status);
+      const manifest = await res.json();
+      const payload = String(manifest && manifest.payload ? manifest.payload : "").trim();
+      if (!payload) throw new Error("Provider sem payload.");
+      const ProviderClass = new Function(payload + "\\nreturn Provider;")();
+      providerCache = new ProviderClass();
+      providerCache.getDisableNsfwConfig = () => false;
+      return providerCache;
+    }
+
+    /* ── AniList ── */
+    async function fetchAniListLibrary(username) {
+      const safe = username.replace(/"/g, '\\\\"');
+      const userRes = await fetch("https://graphql.anilist.co", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: 'query { User(name: "' + safe + '") { id } }' })
+      });
+      const userData = await userRes.json();
+      if (!userData.data || !userData.data.User) throw new Error("Utilizador não encontrado");
+      const userId = userData.data.User.id;
+
+      const listRes = await fetch("https://graphql.anilist.co", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: "query { MediaListCollection(userId: " + userId + ", type: MANGA, status: CURRENT) { lists { entries { media { title { romaji english } coverImage { large } id chapters status } progress } } } }"
+        })
+      });
+      const listData = await listRes.json();
+      if (!listData.data || !listData.data.MediaListCollection) throw new Error("Erro ao carregar lista");
+      const entries = (listData.data.MediaListCollection.lists[0] || {}).entries || [];
+      return entries.map(e => ({
+        id: e.media.id,
+        title: e.media.title.english || e.media.title.romaji,
+        image: e.media.coverImage.large,
+        chapters: e.media.chapters,
+        progress: e.progress,
+        source: "AniList"
+      }));
+    }
+
+    /* ── render helpers ── */
+    function renderSkeletons() {
+      return '<div class="loading-grid">' + Array.from({ length: 6 }).map(() => '<div class="skeleton"></div>').join("") + '</div>';
     }
 
     function buildSourceCounts(items) {
-      const counts = {
-        all: items.length,
-        mangaflix: 0,
-        mangalivre: 0,
-        hipercool: 0,
-        tiamanhwa: 0,
-        mangafire: 0
-      };
-
-      items.forEach((item) => {
-        const src = getItemSource(item);
-        if (counts[src] != null) counts[src]++;
-      });
-
+      const counts = { all: items.length, mangaflix: 0, mangalivre: 0, hipercool: 0, tiamanhwa: 0, mangafire: 0 };
+      items.forEach(item => { const s = getItemSource(item); if (counts[s] != null) counts[s]++; });
       return counts;
     }
 
     function renderFilters(items) {
       const wrap = document.getElementById("sourceFilters");
       if (!wrap) return;
-
       const counts = buildSourceCounts(items);
-
       const defs = [
         { key: "all", label: "Todos" },
         { key: "mangaflix", label: "MangaFlix" },
@@ -1330,39 +1044,188 @@ function init() {
         { key: "tiamanhwa", label: "TiaManhwa" },
         { key: "mangafire", label: "MangaFire" }
       ];
+      wrap.innerHTML = defs.map(d =>
+        '<button class="filter-chip' + (state.sourceFilter === d.key ? " active" : "") + '" data-source="' + d.key + '">' +
+          esc(d.label) + ' (' + (counts[d.key] || 0) + ')' +
+        '</button>'
+      ).join("");
 
-      wrap.innerHTML = defs.map((item) => {
-        const active = state.sourceFilter === item.key ? "active" : "";
-        const count = counts[item.key] || 0;
-
-        return \`
-          <button
-            class="filter-chip \${active}"
-            data-source="\${esc(item.key)}"
-            type="button"
-            onclick="filterFunction('\${esc(item.key)}')"
-          >
-            \${esc(item.label)} (\${count})
-          </button>
-        \`;
-      }).join("");
+      /* delegar eventos nos chips */
+      wrap.querySelectorAll(".filter-chip").forEach(btn => {
+        btn.addEventListener("click", () => {
+          state.sourceFilter = btn.dataset.source || "all";
+          render();
+        });
+      });
     }
 
-    function attachLibraryListeners() {
+    /* ── modal de providers ── */
+    async function openProviderModal(mangaTitle) {
+      state.status = "A pesquisar em providers...";
+      render();
+      try {
+        const provider = await getProvider();
+        const found = safeArray(await provider.search({ query: mangaTitle }));
+
+        const grouped = {};
+        for (const item of found) {
+          const src = splitSourceId(item.id).source;
+          if (!grouped[src]) grouped[src] = { title: sourceLabel(src), items: [] };
+          let chapters = [];
+          try { chapters = safeArray(await provider.findChapters(item.id)); } catch (e) {}
+          grouped[src].items.push({ title: stripProviderPrefix(item.title), chapters: chapters.length });
+        }
+
+        const sources = Object.keys(grouped);
+        let html = '<div class="modal-backdrop" id="modalBackdrop"></div>';
+        html += '<div class="modal-content"><div style="background:linear-gradient(135deg,rgba(14,20,36,.98),rgba(8,12,23,.95));border:1px solid rgba(255,255,255,.12);border-radius:24px;max-height:80vh;overflow-y:auto;padding:28px;backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);box-shadow:0 25px 60px rgba(0,0,0,.45);">';
+        html += '<div style="font-size:22px;font-weight:900;background:linear-gradient(135deg,#5ea2ff,#9b7cff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;">Providers disponíveis</div>';
+        html += '<div style="font-size:14px;color:#98a9c7;margin-bottom:24px;">' + esc(mangaTitle) + '</div>';
+
+        sources.forEach((src, i) => {
+          const d = grouped[src];
+          html += '<div style="margin-bottom:16px;padding:14px;background:rgba(255,255,255,.05);border-radius:14px;border:1px solid rgba(94,162,255,.2);">';
+          html += '<div style="font-size:14px;font-weight:900;color:#d5e7ff;margin-bottom:10px;">' + esc(d.title) + '</div>';
+          d.items.forEach(item => {
+            html += '<div style="font-size:12px;color:#98a9c7;padding:6px 0;display:flex;justify-content:space-between;">';
+            html += '<span>' + esc(item.title) + '</span>';
+            html += '<span style="color:#5ea2ff;font-weight:900;background:rgba(94,162,255,.15);padding:3px 8px;border-radius:8px;">' + item.chapters + ' caps</span>';
+            html += '</div>';
+          });
+          html += '</div>';
+        });
+
+        html += '<button id="closeModalBtn" class="btn btn-primary" style="width:100%;margin-top:20px;">Fechar</button>';
+        html += '</div></div>';
+
+        const app = document.getElementById("app");
+        app.innerHTML = html;
+
+        /* eventos do modal — sem onclick inline */
+        document.getElementById("closeModalBtn").addEventListener("click", render);
+        document.getElementById("modalBackdrop").addEventListener("click", render);
+
+      } catch (e) {
+        state.status = "Erro: " + (e && e.message ? e.message : "Falha ao pesquisar");
+        render();
+      }
+    }
+
+    /* ── render principal ── */
+    function render() {
+      const app = document.getElementById("app");
+      const statusText = document.getElementById("statusText");
+      const resultMeta = document.getElementById("resultMeta");
+      const input = document.getElementById("query");
+
+      statusText.textContent = state.status || "Pronto";
+      if (document.activeElement !== input) input.value = state.query || "";
+
+      if (state.mode === "library") {
+        resultMeta.textContent = state.libraryResults.length + " mangas";
+        renderFilters([]);
+        app.innerHTML = renderLibrary();
+        attachLibraryEvents();
+        return;
+      }
+
+      const allResults = safeArray(state.results);
+      const filtered = state.sourceFilter === "all"
+        ? allResults
+        : allResults.filter(item => getItemSource(item) === state.sourceFilter);
+
+      resultMeta.textContent = filtered.length + " resultados";
+      renderFilters(allResults);
+
+      if (state.loading && allResults.length === 0) {
+        app.innerHTML = renderSkeletons();
+        return;
+      }
+
+      if (filtered.length === 0) {
+        app.innerHTML =
+          '<div class="empty"><div class="empty-box">' +
+          '<img class="empty-logo" src="' + esc(BRAND_ICON) + '" alt="PT Scans" />' +
+          '<div style="font-size:18px;font-weight:800;color:#f4f8ff;margin-bottom:8px;">PT Scans</div>' +
+          '<div style="font-size:13px;line-height:1.6;color:#9db1d3;">' +
+            (allResults.length === 0 ? "Pesquisa um título para começar." : "Não há resultados para este filtro.") +
+          '</div></div></div>';
+        return;
+      }
+
+      app.innerHTML = '<div class="grid">' + filtered.map(item => {
+        const cover = item.image
+          ? '<img class="cover" src="' + esc(item.image) + '" alt="' + esc(item.title) + '" />'
+          : '<div class="fallback">Sem capa</div>';
+        return (
+          '<div class="card">' + cover +
+          '<div class="info"><div>' +
+            '<div class="title">' + esc(item.title) + '</div>' +
+            '<div class="stats">' +
+              '<div class="chip source">' + esc(item.source || getItemSource(item)) + '</div>' +
+              '<div class="chip ' + (item.hasChapters ? 'ok' : 'no') + '">Capítulos: ' + (item.hasChapters ? 'Sim' : 'Não') + '</div>' +
+              '<div class="chip">Total: ' + esc(item.chapterCount) + '</div>' +
+              '<div class="chip">Último: ' + esc(item.latestChapter || "-") + '</div>' +
+              (item.year ? '<div class="chip">Ano: ' + esc(item.year) + '</div>' : '') +
+            '</div>' +
+          '</div>' +
+          '<div class="sub">' + esc(item.id || "") + '</div>' +
+          '</div></div>'
+        );
+      }).join("") + '</div>';
+    }
+
+    /* ── renderLibrary ── */
+    function renderLibrary() {
+      let html = '<div style="padding:20px;">';
+      html += '<div style="display:flex;gap:10px;margin-bottom:20px;align-items:center;">';
+      html += '<input id="anilistUser" class="anilist-input" placeholder="Nome de utilizador AniList" value="' + esc(state.anilistUser) + '" />';
+      html += '<button id="loadLibraryBtn" class="btn btn-primary">Carregar</button>';
+      html += '<button id="backToSearchBtn" class="btn">Voltar</button>';
+      html += '</div>';
+
+      if (state.libraryLoading) {
+        html += renderSkeletons();
+      } else if (state.libraryResults.length > 0) {
+        html += '<div class="grid">';
+        state.libraryResults.forEach(item => {
+          const coverHtml = item.image
+            ? '<img class="cover" src="' + esc(item.image) + '" alt="' + esc(item.title) + '" />'
+            : '<div class="fallback">Sem capa</div>';
+          const chapterText = item.chapters ? String(item.chapters) : "?";
+          html += '<div class="card">' + coverHtml +
+            '<div class="info">' +
+              '<div class="title">' + esc(item.title) + '</div>' +
+              '<div class="stats">' +
+                '<div class="chip">Progresso: ' + esc(String(item.progress)) + '/' + esc(chapterText) + '</div>' +
+                '<div class="chip source">AniList</div>' +
+              '</div>' +
+              '<button class="provider-btn" data-title="' + esc(item.title) + '">Ver Providers</button>' +
+            '</div></div>';
+        });
+        html += '</div>';
+      } else {
+        html += '<div class="empty"><div class="empty-box">' +
+          '<img class="empty-logo" src="' + esc(BRAND_ICON) + '" alt="PT Scans" />' +
+          '<div style="font-size:18px;font-weight:800;color:#f4f8ff;margin-bottom:8px;">Biblioteca AniList</div>' +
+          '<div style="font-size:13px;line-height:1.6;color:#9db1d3;">Insere o teu nome de utilizador e carrega a biblioteca.</div>' +
+          '</div></div>';
+      }
+
+      html += '</div>';
+      return html;
+    }
+
+    /* ── eventos da biblioteca (chamado após render) ── */
+    function attachLibraryEvents() {
       const loadBtn = document.getElementById("loadLibraryBtn");
       const backBtn = document.getElementById("backToSearchBtn");
-      const providerBtns = document.querySelectorAll(".providerBtn");
-      
+
       if (loadBtn) {
         loadBtn.addEventListener("click", async () => {
-          console.log("loadLibraryBtn clicked");
           const userInput = document.getElementById("anilistUser");
           const user = userInput ? userInput.value.trim() : "";
-          if (!user) {
-            state.status = "Por favor, entra um nome de usuário";
-            render();
-            return;
-          }
+          if (!user) { state.status = "Por favor, insere um nome de utilizador"; render(); return; }
           state.anilistUser = user;
           state.libraryLoading = true;
           state.status = "A carregar biblioteca de " + user + "...";
@@ -1379,249 +1242,60 @@ function init() {
           }
         });
       }
-      
+
       if (backBtn) {
         backBtn.addEventListener("click", () => {
-          console.log("backToSearchBtn clicked");
           window.webview.send("setMode", "search");
         });
       }
-      
-      for (let i = 0; i < providerBtns.length; i++) {
-        var btn = providerBtns[i];
-        btn.addEventListener("click", (function(title) {
-          return async () => {
-            console.log("providerBtn clicked for", title);
-            await openProviderModal(title);
-          };
-        })(btn.dataset.title));
-      }
-    }
 
-    function render() {
-      const app = document.getElementById("app");
-      const statusText = document.getElementById("statusText");
-      const resultMeta = document.getElementById("resultMeta");
-      const input = document.getElementById("query");
-
-      statusText.textContent = state.status || "Pronto";
-
-      if (document.activeElement !== input) {
-        input.value = state.query || "";
-      }
-
-      if (state.mode === "library") {
-        resultMeta.textContent = state.libraryResults.length + " mangas";
-        renderFilters([]);
-        app.innerHTML = renderLibrary();
-        return;
-      }
-
-      const allResults = Array.isArray(state.results) ? state.results : [];
-      const filteredResults =
-        state.sourceFilter === "all"
-          ? allResults
-          : allResults.filter((item) => getItemSource(item) === state.sourceFilter);
-
-      resultMeta.textContent = filteredResults.length + " resultados";
-
-      renderFilters(allResults);
-
-      if (state.loading && allResults.length === 0) {
-        app.innerHTML = renderSkeletons();
-        return;
-      }
-
-      if (filteredResults.length === 0) {
-        app.innerHTML = [
-          '<div class="empty">',
-            '<div class="empty-box">',
-              '<img class="empty-logo" src="' + esc(BRAND_ICON) + '" alt="PT Scans" />',
-              '<div style="font-size:18px;font-weight:800;color:#f4f8ff;margin-bottom:8px;">PT Scans</div>',
-              '<div style="font-size:13px;line-height:1.6;color:#9db1d3;">' +
-                (allResults.length === 0
-                  ? 'Pesquisa um título para começar.'
-                  : 'Não há resultados para este filtro.') +
-              '</div>',
-            '</div>',
-          '</div>'
-        ].join("");
-        return;
-      }
-
-      app.innerHTML =
-        '<div class="grid">' +
-        filteredResults.map((item) => {
-          const cover = item.image
-            ? '<img class="cover" src="' + esc(item.image) + '" alt="' + esc(item.title) + '" />'
-            : '<div class="fallback">Sem capa</div>';
-
-          return (
-            '<div class="card">' +
-              cover +
-              '<div class="info">' +
-                '<div>' +
-                  '<div class="title">' + esc(item.title) + '</div>' +
-                  '<div class="stats">' +
-                    '<div class="chip source">' + esc(item.source || getItemSource(item)) + '</div>' +
-                    '<div class="chip ' + (item.hasChapters ? 'ok' : 'no') + '">Capítulos: ' + (item.hasChapters ? 'Sim' : 'Não') + '</div>' +
-                    '<div class="chip">Total: ' + esc(item.chapterCount) + '</div>' +
-                    '<div class="chip">Último: ' + esc(item.latestChapter || "-") + '</div>' +
-                    (item.year ? '<div class="chip">Ano: ' + esc(item.year) + '</div>' : '') +
-                  '</div>' +
-                '</div>' +
-                '<div class="sub">' + esc(item.id || "") + '</div>' +
-              '</div>' +
-            '</div>'
-          );
-        }).join("") +
-        '</div>';
-    }
-
-    function renderLibrary() {
-      let html = '<div style="padding: 20px;">';
-      html += '<div style="display: flex; gap: 10px; margin-bottom: 20px; align-items: center;">';
-      html += '<input id="anilistUser" placeholder="Nome de usuário AniList" value="' + esc(state.anilistUser) + '" style="flex: 1; height: 50px; border-radius: 16px; border: 1px solid rgba(255,255,255,.09); background: rgba(6, 10, 19, .42); color: white; padding: 0 16px; outline: none; font-size: 14px; transition: all .3s cubic-bezier(0.34, 1.56, 0.64, 1); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);" onmouseover="this.style.borderColor=\'rgba(94,162,255,.3)\'; this.style.background=\'rgba(7, 12, 24, .5)\';" onmouseout="this.style.borderColor=\'rgba(255,255,255,.09)\'; this.style.background=\'rgba(6, 10, 19, .42)\';" />';
-      html += '<button id="loadLibraryBtn" onclick="loadLibraryFunction()" class="btn btn-primary">Carregar</button>';
-      html += '<button id="backToSearchBtn" onclick="backToSearchFunction()" class="btn">Voltar</button>';
-      html += '</div>';
-      
-      if (state.libraryLoading) {
-        html += renderSkeletons();
-      }
-      
-      html += '<div id="libraryGrid">';
-      
-      if (state.libraryResults.length > 0) {
-        html += '<div class="grid">';
-        for (let i = 0; i < state.libraryResults.length; i++) {
-          var item = state.libraryResults[i];
-          var chapterText = item.chapters ? String(item.chapters) : '?';
-          var coverHtml = item.image ? '<img class="cover" src="' + esc(item.image) + '" alt="' + esc(item.title) + '" />' : '<div class="fallback">Sem capa</div>';
-          html += '<div class="card">';
-          html += coverHtml;
-          html += '<div class="info"><div class="title">' + esc(item.title) + '</div>';
-          html += '<div class="stats"><div class="chip">Progresso: ' + esc(String(item.progress)) + '/' + esc(chapterText) + '</div>';
-          html += '<div class="chip source">AniList</div></div>';
-          html += '<button class="providerBtn" data-title="' + esc(item.title) + '" onclick="openProviderModalFunction(\'' + esc(item.title) + '\')" style="margin-top: 8px; width: 100%; background: linear-gradient(135deg, rgba(94,162,255,.15), rgba(94,162,255,.08)); border: 1px solid rgba(94,162,255,.3); color: #5ea2ff; padding: 8px; border-radius: 12px; cursor: pointer; font-weight: 800; font-size: 12px; transition: all .3s cubic-bezier(0.34, 1.56, 0.64, 1); position: relative; overflow: hidden;" onmouseover="this.style.background=\'linear-gradient(135deg, rgba(94,162,255,.25), rgba(94,162,255,.15))\'; this.style.boxShadow=\'0 8px 16px rgba(94,162,255,.2), inset 0 1px 2px rgba(255,255,255,.05)\'; this.style.transform=\'translateY(-1px)\';" onmouseout="this.style.background=\'linear-gradient(135deg, rgba(94,162,255,.15), rgba(94,162,255,.08))\'; this.style.boxShadow=\'none\'; this.style.transform=\'translateY(0)\';">Ver Providers</button>';
-          html += '</div></div>';
-        }
-        html += '</div>';
-      } else {
-        html += '<div class="empty"><div class="empty-box">';
-        html += '<img class="empty-logo" src="' + esc(BRAND_ICON) + '" alt="PT Scans" />';
-        html += '<div style="font-size:18px;font-weight:800;color:#f4f8ff;margin-bottom:8px;">Biblioteca AniList</div>';
-        html += '<div style="font-size:13px;line-height:1.6;color:#9db1d3;">Insira seu nome de usuário e carregue sua biblioteca.</div>';
-        html += '</div></div>';
-      }
-      
-      html += '</div></div>';
-      return html;
-    }
-
-    window.searchFunction = function() {
-      console.log("searchBtn clicked");
-      state.status = "Search clicked";
-      render();
-      window.webview.send("search", document.getElementById("query").value);
-    };
-
-    window.clearFunction = function() {
-      console.log("clearBtn clicked");
-      document.getElementById("query").value = "";
-      state.sourceFilter = "all";
-      state.status = "Clear clicked";
-      render();
-      window.webview.send("clear");
-    };
-
-    window.closeFunction = function() {
-      console.log("closeBtn clicked");
-      window.webview.send("hide");
-    };
-
-    window.reloadFunction = function() {
-      console.log("reloadBtn clicked");
-      window.webview.send("reloadProvider");
-    };
-
-    window.libraryFunction = function() {
-      console.log("libraryBtn clicked");
-      window.webview.send("setMode", "library");
-    };
-
-    window.loadLibraryFunction = function() {
-      console.log("loadLibraryBtn clicked");
-      const userInput = document.getElementById("anilistUser");
-      const user = userInput ? userInput.value.trim() : "";
-      if (!user) {
-        state.status = "Por favor, entra um nome de usuário";
-        render();
-        return;
-      }
-      state.anilistUser = user;
-      state.libraryLoading = true;
-      state.status = "A carregar biblioteca de " + user + "...";
-      render();
-      fetchAniListLibrary(user).then(results => {
-        state.libraryResults = results;
-        state.status = "Biblioteca carregada: " + results.length + " mangas";
-        state.libraryLoading = false;
-        render();
-      }).catch(e => {
-        state.libraryResults = [];
-        state.status = "Erro: " + (e && e.message ? e.message : "Falha ao carregar");
-        state.libraryLoading = false;
-        render();
+      document.querySelectorAll(".provider-btn").forEach(btn => {
+        btn.addEventListener("click", () => openProviderModal(btn.dataset.title));
       });
-    };
+    }
 
-    window.backToSearchFunction = function() {
-      console.log("backToSearchBtn clicked");
-      window.webview.send("setMode", "search");
-    };
+    /* ── ligar botões da topbar (executado uma vez após DOM pronto) ── */
+    function attachTopbarEvents() {
+      document.getElementById("searchBtn").addEventListener("click", () => {
+        const q = document.getElementById("query").value;
+        window.webview.send("search", q);
+      });
 
-    window.openProviderModalFunction = function(title) {
-      console.log("providerBtn clicked for", title);
-      openProviderModal(title);
-    };
+      document.getElementById("query").addEventListener("keydown", e => {
+        if (e.key === "Enter") {
+          window.webview.send("search", e.target.value);
+        }
+      });
 
-    window.closeModalFunction = function() {
-      console.log("closeModal or backdrop clicked");
-      render();
-    };
+      document.getElementById("clearBtn").addEventListener("click", () => {
+        document.getElementById("query").value = "";
+        state.sourceFilter = "all";
+        window.webview.send("clear");
+      });
 
-    window.filterFunction = function(source) {
-      console.log("filter-chip clicked", source);
-      state.sourceFilter = source || "all";
-      render();
-    };
+      document.getElementById("closeBtn").addEventListener("click", () => {
+        window.webview.send("hide");
+      });
 
-    window.webview.on("results", (value) => {
-      state.results = value || [];
-      render();
-    });
+      document.getElementById("reloadBtn").addEventListener("click", () => {
+        providerCache = null;
+        window.webview.send("reloadProvider");
+      });
 
-    window.webview.on("status", (value) => {
-      state.status = value || "Pronto";
-      render();
-    });
+      document.getElementById("libraryBtn").addEventListener("click", () => {
+        window.webview.send("setMode", "library");
+      });
+    }
 
-    window.webview.on("loading", (value) => {
-      state.loading = !!value;
-      render();
-    });
+    /* ── canal webview → state ── */
+    window.webview.on("results", value => { state.results = value || []; render(); });
+    window.webview.on("status",  value => { state.status  = value || "Pronto"; render(); });
+    window.webview.on("loading", value => { state.loading = !!value; render(); });
+    window.webview.on("query",   value => { state.query   = value || ""; render(); });
+    window.webview.on("mode",    value => { state.mode    = value; render(); });
 
-    window.webview.on("query", (value) => {
-      state.query = value || "";
-      render();
-    });
-
-    window.webview.on("mode", (value) => {
-      state.mode = value;
-      render();
-    });
-
+    /* ── arranque ── */
+    attachTopbarEvents();
     render();
   </script>
 </body>
