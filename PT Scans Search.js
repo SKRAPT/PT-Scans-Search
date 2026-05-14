@@ -1091,6 +1091,7 @@ function init() {
   </div>
 
   <script>
+    console.log("Script started");
     const BRAND_ICON = ${JSON.stringify(BRAND_ICON)};
     const state = {
       results: [],
@@ -1232,17 +1233,17 @@ function init() {
         
         const closeBtn = document.getElementById("closeModal");
         if (closeBtn) {
-          closeBtn.onclick = () => {
+          closeBtn.addEventListener("click", () => {
             console.log("closeModal clicked");
             render();
-          };
+          });
         }
         const backdrop = document.getElementById("modalBackdrop");
         if (backdrop) {
-          backdrop.onclick = () => {
+          backdrop.addEventListener("click", () => {
             console.log("modalBackdrop clicked");
             render();
-          };
+          });
         }
       } catch (e) {
         state.status = "Erro: " + (e && e.message ? e.message : "Falha ao pesquisar");
@@ -1346,11 +1347,11 @@ function init() {
       }).join("");
 
       wrap.querySelectorAll(".filter-chip").forEach((btn) => {
-        btn.onclick = () => {
+        btn.addEventListener("click", () => {
           console.log("filter-chip clicked", btn.dataset.source);
           state.sourceFilter = btn.dataset.source || "all";
           render();
-        };
+        });
       });
     }
 
@@ -1360,7 +1361,7 @@ function init() {
       const providerBtns = document.querySelectorAll(".providerBtn");
       
       if (loadBtn) {
-        loadBtn.onclick = async () => {
+        loadBtn.addEventListener("click", async () => {
           console.log("loadLibraryBtn clicked");
           const userInput = document.getElementById("anilistUser");
           const user = userInput ? userInput.value.trim() : "";
@@ -1383,24 +1384,24 @@ function init() {
             state.libraryLoading = false;
             render();
           }
-        };
+        });
       }
       
       if (backBtn) {
-        backBtn.onclick = () => {
+        backBtn.addEventListener("click", () => {
           console.log("backToSearchBtn clicked");
           window.webview.send("setMode", "search");
-        };
+        });
       }
       
       for (let i = 0; i < providerBtns.length; i++) {
         var btn = providerBtns[i];
-        btn.onclick = (function(title) {
+        btn.addEventListener("click", (function(title) {
           return async () => {
             console.log("providerBtn clicked for", title);
             await openProviderModal(title);
           };
-        })(btn.dataset.title);
+        })(btn.dataset.title));
       }
     }
 
@@ -1526,10 +1527,11 @@ function init() {
       return html;
     }
 
-    document.getElementById("searchBtn").onclick = () => {
+    document.getElementById("searchBtn").addEventListener("click", () => {
       console.log("searchBtn clicked");
+      console.log("searchBtn element:", document.getElementById("searchBtn"));
       window.webview.send("search", document.getElementById("query").value);
-    };
+    });
 
     document.getElementById("query").onkeydown = (e) => {
       if (e.key === "Enter") {
@@ -1538,27 +1540,27 @@ function init() {
       }
     };
 
-    document.getElementById("clearBtn").onclick = () => {
+    document.getElementById("clearBtn").addEventListener("click", () => {
       console.log("clearBtn clicked");
       document.getElementById("query").value = "";
       state.sourceFilter = "all";
       window.webview.send("clear");
-    };
+    });
 
-    document.getElementById("closeBtn").onclick = () => {
+    document.getElementById("closeBtn").addEventListener("click", () => {
       console.log("closeBtn clicked");
       window.webview.send("hide");
-    };
+    });
 
-    document.getElementById("reloadBtn").onclick = () => {
+    document.getElementById("reloadBtn").addEventListener("click", () => {
       console.log("reloadBtn clicked");
       window.webview.send("reloadProvider");
-    };
+    });
 
-    document.getElementById("libraryBtn").onclick = () => {
+    document.getElementById("libraryBtn").addEventListener("click", () => {
       console.log("libraryBtn clicked");
       window.webview.send("setMode", "library");
-    };
+    });
 
     window.webview.on("results", (value) => {
       state.results = value || [];
