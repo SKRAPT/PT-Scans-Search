@@ -1,5 +1,5 @@
 {
-  "id": "PT-Scans-Search",
+  "id": "PT Scans Search",
   "name": "PT Scans Search",
   "version": "1.0.0",
   "manifestURI": "https://raw.githubusercontent.com/SKRAPT/PT-Scans-Search/refs/heads/main/PT%20Scans%20Search.json",
@@ -8,7 +8,6 @@
   "description": "PT Scans Search",
   "author": "Skrapt",
   "icon": "https://raw.githubusercontent.com/SKRAPT/PT-Scans/main/upscan.png",
-  "website": "https://github.com/SKRAPT/PT-Scans-Search",
   "lang": "pt",
   "payloadURI": "https://raw.githubusercontent.com/SKRAPT/PT-Scans-Search/main/PT%20Scans%20Search.js",
   "plugin": {
