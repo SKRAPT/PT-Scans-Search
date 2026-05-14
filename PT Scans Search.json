@@ -1,5 +1,5 @@
 {
- "id": "pt-scans-search"
+  "id": "pt_scans_search"
   "name": "PT Scans Search",
   "version": "1.0.0",
   "manifestURI": "https://raw.githubusercontent.com/SKRAPT/PT-Scans-Search/refs/heads/main/PT%20Scans%20Search.json",
