@@ -1,0 +1,40 @@
+{
+  "id": "PTScansSearch",
+  "name": "PT Scans Search",
+  "version": "1.0.0",
+  "manifestURI": "https://raw.githubusercontent.com/SKRAPT/PT-Scans-Search/refs/heads/main/PT%20Scans%20Search.json",
+  "language": "javascript",
+  "type": "plugin",
+  "description": "PT Scans Search",
+  "author": "Skrapt",
+  "icon": "https://raw.githubusercontent.com/SKRAPT/PT-Scans/main/upscan.png",
+  "lang": "pt",
+  "payloadURI": "https://raw.githubusercontent.com/SKRAPT/PT-Scans-Search/main/PT%20Scans%20Search.js",
+  "plugin": {
+    "version": "1",
+    "permissions": {
+      "scopes": [],
+      "allow": {
+        "networkAccess": {
+          "allowedDomains": [
+            "raw.githubusercontent.com",
+            "api.mangaflix.net",
+            "mangaflix.net",
+            "*.mangaflix.net",
+            "mangalivre.to",
+            "*.mangalivre.to",
+            "hiper.cool",
+            "*.hiper.cool",
+            "tiamanhwa.com",
+            "*.tiamanhwa.com",
+            "mangafire.to",
+            "*.mangafire.to",
+            "graphql.anilist.co"
+          ],
+          "reasoning": "Needed to fetch provider data and chapter pages from supported sources."
+        }
+      }
+    }
+  },
+  "isDevelopment": false
+}
