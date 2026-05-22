@@ -38,6 +38,7 @@
   },
   "isDevelopment": false
 }
+  {
 function init() {
   $ui.register((ctx) => {
     ctx.Dom.onReady(() => {
