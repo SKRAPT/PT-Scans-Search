@@ -1,7 +1,7 @@
 {
   "id": "PTScansSearch",
   "name": "PT Scans Search",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "manifestURI": "https://raw.githubusercontent.com/SKRAPT/PT-Scans-Search/refs/heads/main/PT%20Scans%20Search.json",
   "language": "javascript",
   "type": "plugin",
