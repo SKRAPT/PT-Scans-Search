@@ -300,7 +300,7 @@ render();
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <style>
     /* ========================================================
-       CYBERPUNK / NEON JAPANESE STYLE OVERRIDE (NOVO)
+       CYBERPUNK / NEON JAPANESE STYLE OVERRIDE (FINAL)
        ======================================================== */
     :root { 
         --text:#e0fffe; /* Azul neon claro */
@@ -494,7 +494,7 @@ render();
           <div id="statusText">Pronto</div>
         </div>
         <div class="pill" id="resultMeta">0 resultados</div >
-      </div >
+      </div>
 
 
       <div class="filters" id="sourceFilters"></div >
@@ -504,5 +504,6 @@ render();
 
   <!-- Modal mount permanece igual -->
   <div id="modalMount"></div>
+
 
 `;
