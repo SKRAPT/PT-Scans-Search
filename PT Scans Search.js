@@ -45,7 +45,9 @@ function init() {
     function normalizeText(v) { return typeof v === "string" ? v.trim() : ""; }
 }
 
-// [AQUI COMEÇA O SEU CÓDIGO DE INICIALIZAÇÃO, REPETIDO PARA PRESERVAR O CONTEXTO]
+
+// [LÓGICA JAVASCRIPT E ESTADOS (MANTER O SEU CÓDIGO DE FUNÇÕES AQUI)] 
+/* ... (Funções como getProvider, runSearch, attachLibraryEvents etc.) */
 
 <script>
     const BRAND_ICON = ${JSON.stringify(BRAND_ICON)};
@@ -204,7 +206,7 @@ function attachLibraryEvents(){
 }
 
 
-/* ── MAIN RENDER ── */
+/* ── MAIN RENDER (Funções de renderização e evento) ── */
 function renderSkeletons(){ return '<div class="loading-grid">'+Array.from({length:6}).map(()=>'<div class="skeleton"></div>').join("")+'</div>'; }
 
 function render(){
@@ -273,7 +275,7 @@ function attachTopbarEvents(){
 }
 
 
-/* canal webview (MANTIDO) */
+/* canal webview (EVENT HANDLERS) */
 window.webview.on("results",      v=>{state.results=v||[];render();});
 window.webview.on("status",       v=>{state.status=v||"Pronto";render();});
 window.webview.on("loading",      v=>{state.loading=!!v;render();});
@@ -295,7 +297,6 @@ render();
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!-- Sugestão: Adicionar fonte monospace cyberpunk no seu CSS global -->
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <style>
     /* ========================================================
@@ -459,61 +460,8 @@ render();
     .empty { display:flex; align-items:center; justify-content:center; min-height:380px; border-radius:26px; border:2px dashed rgba(94,162,255,.3); background:radial-gradient(circle at top,rgba(94,162,255,.1),transparent 36%),linear-gradient(135deg,rgba(255,255,255,.01),rgba(255,255,255,.005)); color:#9db1d3; text-align:center; padding:32px; animation:fadeUp .4s ease; }
     .empty-box { max-width:460px; }
 
-    /* Loading Skeletons */
-    .loading-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(350px,1fr)); gap:18px; }
-    .skeleton { position:relative; min-height:190px; border-radius:24px; overflow:hidden; background:rgba(13,18,30,.6); border:1px solid rgba(255,255,255,.07); }
-    .skeleton::after { content:""; position:absolute; inset:0; transform:translateX(-100%); background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent); animation:skelSlide 1.4s infinite; }
-    @keyframes skelSlide{100%{transform:translateX(100%);}}
 
-
-    /* LIBRARY STYLES */
-    .lib-header { display:flex; gap:10px; margin-bottom:20px; align-items:center; }
-    .lib-input { flex:1; height:50px; border-radius:16px; border:1px solid rgba(94,162,255,.3); background:rgba(6,10,19,.42); color:white; padding:0 16px; outline:none; font-size:14px; font-family:inherit; transition:border-color .3s,background .3s; }
-    .lib-input:focus { border-color:rgba(94,162,255,.8); background:rgba(7,12,24,.65); box-shadow:0 0 0 4px rgba(94,162,255,.15); }
-    .lib-input::placeholder { color:rgba(155,177,227,.6); }
-    .progress-wrap { margin:8px 0 4px; }
-    .progress-label { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-bottom:5px; }
-    .progress-bar { height:5px; border-radius:999px; background:rgba(255,255,255,.08); overflow:hidden; box-shadow:inset 0 0 5px rgba(94,162,255,.1);}
-    .progress-fill { height:100%; border-radius:999px; background:linear-gradient(90deg,#3b82f6,#9b7cff); transition:width .6s ease; box-shadow:0 0 5px rgba(155,124,255,.3);}
-
-
-    /* ══ MODAL (CONSOLE) STYLES ══ */
-    .modal-overlay { position:fixed; inset:0; z-index:900; background:rgba(0,0,0,.65); backdrop-filter:blur(12px); display:flex; align-items:center; justify-content:center; animation:overlayIn .2s ease; }
-    @keyframes overlayIn{from{opacity:0;}to{opacity:1;}}
-    .modal-box { width:min(96vw,700px); max-height:84vh; border-radius:28px; overflow:hidden; background:linear-gradient(160deg,rgba(11,17,33,.99),rgba(5,8,18,.98)); border:2px solid rgba(94,162,255,.4); box-shadow:0 40px 100px rgba(0,0,0,.7),inset 0 0 20px rgba(94,162,255,.1); display:flex; flex-direction:column; animation:modalIn .3s cubic-bezier(0.34,1.56,0.64,1); }
-    @keyframes modalIn{from{opacity:0;transform:scale(.86) translateY(24px);}to{opacity:1;transform:none;}}
-
-
-    .modal-head { padding:24px 28px 18px; border-bottom:1px solid rgba(255,255,255,.07); background:rgba(255,255,255,.025); position:relative; flex-shrink:0; }
-    .modal-eyebrow { font-size:10px; font-weight:900; letter-spacing:.15em; text-transform:uppercase; color:var(--neon-blue); margin-bottom:6px; opacity:.75; text-shadow:0 0 5px rgba(94,162,255,.3); }
-    .modal-manga-title { font-size:21px; font-weight:900; color:#eef4ff; line-height:1.3; padding-right:44px; text-shadow:0 0 8px rgba(59,130,246,.5); }
-
-
-    /* source blocks */
-    .src-block { margin-bottom:12px; border-radius:20px; overflow:hidden; border:1px solid rgba(255,255,255,.07); background:rgba(255,255,255,.025); box-shadow:inset 0 0 8px rgba(94,162,255,.05); }
-    /* Animações de entrada mantidas */
-
-
-    .src-header { display:flex; align-items:center; gap:12px; padding:14px 18px; background:rgba(255,255,255,.04); border-bottom:1px solid rgba(94,162,255,.05); }
-    .src-dot { width:10px; height:10px; border-radius:999px; flex-shrink:0; box-shadow:0 0 8px var(--neon-blue), 0 0 8px var(--neon-magenta); /* Glow duplo */ }
-    .src-name { font-size:14px; font-weight:900; color:#e8f2ff; flex:1; text-shadow:0 0 5px rgba(59,130,246,.2); }
-    .src-count { font-size:11px; font-weight:800; padding:4px 10px; border-radius:999px; background:rgba(94,162,255,.14); border:1px solid rgba(94,162,255,.22); color:#93c5fd; box-shadow:inset 0 0 8px rgba(94,162,255,.1); }
-
-
-    .src-items { padding:4px 0; }
-    .src-item { display:flex; align-items:center; gap:12px; padding:10px 18px; transition:background .2s; }
-    .src-item:hover { background:rgba(255,255,255,.06); box-shadow:inset 0 0 10px rgba(94,162,255,.05); }
-    .src-item-title { flex:1; font-size:13px; color:#c0d3ef; line-height:1.4; }
-    .src-item-latest { font-size:11px; color:#576d8a; flex-shrink:0; white-space:nowrap; }
-    /* Badge com cor neon */
-    .src-item-badge { 
-        flex-shrink:0; font-size:11px; font-weight:900; padding:4px 10px; border-radius:999px; background:rgba(52,211,153,.11); border:1px solid rgba(52,211,153,.22); color:#6ee7b7; white-space:nowrap; 
-        box-shadow:0 0 8px rgba(52,211,153,.1);
-    }
-    .src-item-badge.zero { background:rgba(239,68,68,.1); border-color:rgba(239,68,68,.2); color:#fca5a5; }
-
-
-  </style>
+</style>
 </head>
 <body class="overlay">
   <!-- O restante do HTML permanece inalterado -->
@@ -535,7 +483,7 @@ render();
           <button id="reloadBtn" class="btn">↺ Reload</button>
           <button id="clearBtn"  class="btn">Limpar</button>
           <button id="closeBtn"  class="btn">✕ Fechar</button>
-        </div>
+        </div >
         <button id="libraryBtn" class="btn">📚 Biblioteca</button>
       </div >
 
@@ -549,11 +497,12 @@ render();
       </div >
 
 
-      <div class="filters" id="sourceFilters"></div>
+      <div class="filters" id="sourceFilters"></div >
       <div class="content"><div id="app"></div></div>
     </div>
-  </div>
+  </div >
 
   <!-- Modal mount permanece igual -->
   <div id="modalMount"></div>
+
 `;
