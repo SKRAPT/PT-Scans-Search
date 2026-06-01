@@ -43,255 +43,8 @@ function init() {
     let providerPromise = null;
 
     function normalizeText(v) { return typeof v === "string" ? v.trim() : ""; }
-}
 
-
-// [LÓGICA JAVASCRIPT E ESTADOS (MANTER O SEU CÓDIGO DE FUNÇÕES AQUI)] 
-/* ... (Funções como getProvider, runSearch, attachLibraryEvents etc.) */
-
-<script>
-    const BRAND_ICON = ${JSON.stringify(BRAND_ICON)};
-
-    const state = {
-      results:[], status:"Pronto", loading:false, query:"",
-      sourceFilter:"all", mode:"search",
-      libraryData:[], libraryUser:"",
-      providerModal:null
-    };
-
-    function esc(v) {
-      return String(v==null?"":v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;";
-    }
-    function safeArray(v){ return Array.isArray(v)?v:[]; }
-    function getItemSource(item){
-      if(item.rawSource) return item.rawSource;
-      const raw=String(item.id||""); const idx=raw.indexOf(":");
-      return idx!==-1?raw.slice(0,idx):"unknown";
-    }
-    function srcColorClass(src){
-      const m={mangaflix:"c-mangaflix",mangalivre:"c-mangalivre",hipercool:"c-hipercool",tiamanhwa:"c-tiamanhwa",mangafire:"c-mangafire"};
-      return m[src]||"c-unknown";
-    }
-
-
-/* filters */
-function buildSourceCounts(items){
-  const c={all:items.length,mangaflix:0,mangalivre:0,hipercool:0,tiamanhwa:0,mangafire:0};
-  items.forEach(i=>{const s=getItemSource(i);if(c[s]!=null)c[s]++;});
-  return c;
-}
-
-/* ── MODAL RENDER (MANTIDO COMO ESTÁ PARA FUNCIONALIDADE) ── */
-function renderModal(){
-    const mount=document.getElementById("modalMount");
-    const m=state.providerModal;
-    if(!m){mount.innerHTML="";return;}
-
-
-    let bodyHtml="";
-    if(m.loading){
-      bodyHtml='<div class="modal-loading"><div class="spin"></div><span>A pesquisar em todos os providers...</span></div>';
-    } else if(m.error){
-      bodyHtml='<div class="modal-empty">❌ '+esc(m.error)+'</div>';
-    } else {
-      const srcs=Object.keys(m.grouped||{});
-      if(srcs.length===0){
-        bodyHtml='<div class="modal-empty">Nenhum provider encontrou este título.</div>';
-      } else {
-        bodyHtml=srcs.map(src=>{
-          const d=m.grouped[src];
-          const colorClass=srcColorClass(src);
-          const itemsHtml=d.items.map(item=>{
-            const zero=item.chapters===0;
-            const latest=item.latestChapter?"cap "+esc(String(item.latestChapter)):"";
-            return '<div class="src-item">'+
-              '<div class="src-item-title">'+esc(item.title)+'</div>'+
-              (latest?'<div class="src-item-latest">Último: '+latest+'</div>':'')+
-              '<div class="src-item-badge'+(zero?" zero":"")+'">'+item.chapters+' cap'+(item.chapters===1?"":"s")+'</div>'+
-            '</div>';
-          }).join("");
-          return '<div class="src-block">'+
-            '<div class="src-header">'+
-              '<div class="src-dot '+colorClass+'"></div>'+
-              '<div class="src-name">'+esc(d.label)+'</div>'+
-              '<div class="src-count">'+d.items.length+(d.items.length===1?" resultado":" resultados")+'</div>'+
-            '</div>'+
-            '<div class="src-items">'+itemsHtml+'</div>';
-        }).join("");
-      }
-    }
-
-    mount.innerHTML=
-      '<div class="modal-overlay" id="modalOverlay">'+
-        '<div class="modal-box">'+
-          '<div class="modal-head">'+
-            '<button class="modal-close" id="modalCloseX">✕</button>'+
-            '<div class="modal-eyebrow">Providers disponíveis</div>'+
-            '<div class="modal-manga-title">'+esc(m.title)+'</div>'+
-          '</div>'+
-          '<div class="modal-body">'+bodyHtml+'</div>'+
-          '<div class="modal-foot">'+
-            '<button id="modalFootClose" class="btn btn-primary" style="width:100%;">Fechar</button>'+
-          '</div>'+
-        '</div >'+
-      '</div>';
-
-    document.getElementById("modalCloseX").addEventListener("click",closeModal);
-    document.getElementById("modalFootClose").addEventListener("click",closeModal);
-    document.getElementById("modalOverlay").addEventListener("click",e=>{if(e.target===e.currentTarget)closeModal();});
-}
-
-
-/* ── LIBRARY RENDER (MANTIDO COMO ESTÁ PARA FUNCIONALIDADE) ── */
-function renderLibrary(){
-  let html='<div style="padding:20px;">';
-  html+='<div class="lib-header">';
-  html+='<input id="libUserInput" class="lib-input" placeholder="Nome de utilizador AniList" value="'+esc(state.libraryUser)+'" />';
-  html+='<button id="loadLibBtn" class="btn btn-primary">Carregar</button>';
-  html+='<button id="backBtn" class="btn">← Pesquisa</button>';
-  html+='</div>';
-
-
-  if(state.loading){
-    html+='<div class="loading-grid">'+Array.from({length:6}).map(()=>'<div class="skeleton"></div>').join("")+'</div>';
-  } else if(state.libraryData.length>0){
-    html+='<div class="grid">';
-    state.libraryData.forEach(item=>{
-      const pct=(item.chapters&&item.chapters>0)?Math.min(100,Math.round((item.progress/item.chapters)*100)):0;
-      const chText=item.chapters?String(item.chapters):"?";
-      const coverHtml=item.image?'<img class="cover" src="'+esc(item.image)+'" alt="'+esc(item.title)+'" />':'<div class="fallback">Sem capa</div>';
-      html+='<div class="card">'+coverHtml+
-        '<div class="info"><div>'+
-          '<div class="card-title">'+esc(item.title)+'</div>'+
-          '<div class="stats">'+
-            '<div class="chip src">AniList</div>'+
-            '<div class="chip">'+esc(String(item.progress))+' / '+esc(chText)+' caps</div>'+
-          '</div>'+
-          '<div class="progress-wrap">'+
-            '<div class="progress-label"><span>Progresso</span><span'>"+pct+"%</span></div>'+
-            '<div class="progress-bar"><div class="progress-fill" style="width:'+pct+'%'"></div></div>'+
-          '</div>'+
-        '</div>'+
-        '<button class="provider-btn" data-title="'+esc(item.title)+'">🔍 Ver Providers</button>'+
-      '</div></div>';
-    });
-    html+='</div>';
-  } else {
-    html+='<div class="empty"><div class="empty-box">'+
-      '<img class="empty-logo" src="'+esc(BRAND_ICON)+'" alt="PT Scans" />'+
-      '<div style="font-size:18px;font-weight:800;color:#f4f8ff;margin-bottom:8px;">Biblioteca AniList</div>'+
-      '<div style="font-size:13px;line-height:1.6;color:#9db1d3;">Insere o teu utilizador AniList para carregar a lista de leitura.</div>'+
-    '</div></div>';
-  }
-  html+='</div>';
-  return html;
-}
-
-function attachLibraryEvents(){
-  const loadBtn=document.getElementById("loadLibBtn");
-  const backBtn=document.getElementById("backBtn");
-  if(loadBtn){
-    loadBtn.addEventListener("click",()=>{
-      const inp=document.getElementById("libUserInput");
-      const user=inp?inp.value.trim():"";
-      if(!user){state.status="Insere um nome de utilizador";render();return;}
-      state.libraryUser=user;
-      window.webview.send("fetchAniList",user);
-    });
-  }
-  if(backBtn) backBtn.addEventListener("click",()=>window.webview.send("setMode","search"));
-  document.querySelectorAll(".provider-btn").forEach(btn=>
-    btn.addEventListener("click",()=>openProviderModal(btn.dataset.title))
-  );
-}
-
-
-/* ── MAIN RENDER (Funções de renderização e evento) ── */
-function renderSkeletons(){ return '<div class="loading-grid">'+Array.from({length:6}).map(()=>'<div class="skeleton"></div>').join("")+'</div>'; }
-
-function render(){
-  const app=document.getElementById("app");
-  const statusText=document.getElementById("statusText");
-  const resultMeta=document.getElementById("resultMeta");
-  const input=document.getElementById("query");
-
-
-  statusText.textContent=state.status||"Pronto";
-  if(document.activeElement!==input) input.value=state.query||"";
-
-  if(state.mode==="library"){
-    resultMeta.textContent=state.libraryData.length+" mangas";
-    renderFilters([]);
-    app.innerHTML=renderLibrary();
-    attachLibraryEvents();
-    return;
-  }
-
-
-  const all=safeArray(state.results);
-  const filtered=state.sourceFilter==="all"?all:all.filter(i=>getItemSource(i)===state.sourceFilter);
-  resultMeta.textContent=filtered.length+" resultados";
-  renderFilters(all);
-
-  if(state.loading&&all.length===0){app.innerHTML=renderSkeletons();return;}
-
-
-  if(filtered.length===0){
-    app.innerHTML='<div class="empty"><div class="empty-box">'+
-      '<img class="empty-logo" src="'+esc(BRAND_ICON)+'" alt="PT Scans" />'+
-      '<div style="font-size:18px;font-weight:800;color:#f4f8ff;margin-bottom:8px;">PT Scans</div>'+
-      '<div style="font-size:13px;line-height:1.6;color:#9db1d3;">'+(all.length===0?"Pesquisa um título para começar.":"Sem resultados para este filtro.")+'</div>'+
-    '</div></div>';
-    return;
-  }
-
-
-  app.innerHTML='<div class="grid">'+filtered.map(item=>{
-    const cover=item.image?'<img class="cover" src="'+esc(item.image)+'" alt="'+esc(item.title)+'" />':'<div class="fallback">Sem capa</div>';
-    return '<div class="card">'+cover+
-      '<div class="info"><div>'+
-        '<div class="card-title">'+esc(item.title)+'</div>'+
-        '<div class="stats">'+
-          '<div class="chip src">'+esc(item.source||getItemSource(item))+'</div>'+
-          '<div class="chip '+(item.hasChapters?"ok":"no")+'">'+(item.hasChapters?"✓ Com caps":"✗ Sem caps")+'</div>'+
-          '<div class="chip">Total: '+esc(item.chapterCount)+'</div>'+
-          '<div class="chip">Último: '+esc(item.latestChapter||"—")+'</div>'+
-          (item.year?'<div class="chip">'+esc(item.year)+'</div>':'')+
-        '</div>'+
-      '</div>'+
-      '<div class="sub">'+esc(item.id||"")+'</div>'+
-    '</div></div>';
-  }).join("")+'</div>';
-}
-
-/* topbar */
-function attachTopbarEvents(){
-  document.getElementById("searchBtn").addEventListener("click",()=>window.webview.send("search",document.getElementById("query").value));
-  document.getElementById("query").addEventListener("keydown",e=>{if(e.key==="Enter")window.webview.send("search",e.target.value);});
-  document.getElementById("clearBtn").addEventListener("click",()=>{document.getElementById("query").value="";state.sourceFilter="all";window.webview.send("clear");});
-  document.getElementById("closeBtn").addEventListener("click",()=>window.webview.send("hide"));
-  document.getElementById("reloadBtn").addEventListener("click",()=>window.webview.send("reloadProvider"));
-  document.getElementById("libraryBtn").addEventListener("click",()=>window.webview.send("setMode","library"));
-}
-
-
-/* canal webview (EVENT HANDLERS) */
-window.webview.on("results",      v=>{state.results=v||[];render();});
-window.webview.on("status",       v=>{state.status=v||"Pronto";render();});
-window.webview.on("loading",      v=>{state.loading=!!v;render();});
-window.webview.on("query",        v=>{state.query=v||"";render();});
-window.webview.on("mode",         v=>{state.mode=v;render();});
-window.webview.on("libraryData",  v=>{state.libraryData=v||[];render();});
-window.webview.on("providerModal", v=>{
-  if(v!==null&&state.providerModal!==null){state.providerModal=v;renderModal();}
-  else if(v===null){state.providerModal=null;renderModal();}
-});
-
-attachTopbarEvents();
-render();
-</script>
-
-
+    panel.setHTML(`
 <!DOCTYPE html>
 <html lang="pt">
 <head>
@@ -506,4 +259,249 @@ render();
   <div id="modalMount"></div>
 
 
-`;
+  <script>
+    const BRAND_ICON = ${JSON.stringify(BRAND_ICON)};
+
+    const state = {
+      results:[], status:"Pronto", loading:false, query:"",
+      sourceFilter:"all", mode:"search",
+      libraryData:[], libraryUser:"",
+      providerModal:null
+    };
+
+    function esc(v) {
+      return String(v==null?"":v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+    }
+    function safeArray(v){ return Array.isArray(v)?v:[]; }
+    function getItemSource(item){
+      if(item.rawSource) return item.rawSource;
+      const raw=String(item.id||""); const idx=raw.indexOf(":");
+      return idx!==-1?raw.slice(0,idx):"unknown";
+    }
+    function srcColorClass(src){
+      const m={mangaflix:"c-mangaflix",mangalivre:"c-mangalivre",hipercool:"c-hipercool",tiamanhwa:"c-tiamanhwa",mangafire:"c-mangafire"};
+      return m[src]||"c-unknown";
+    }
+
+
+/* filters */
+function buildSourceCounts(items){
+  const c={all:items.length,mangaflix:0,mangalivre:0,hipercool:0,tiamanhwa:0,mangafire:0};
+  items.forEach(i=>{const s=getItemSource(i);if(c[s]!=null)c[s]++;});
+  return c;
+}
+
+/* ── MODAL RENDER (MANTIDO COMO ESTÁ PARA FUNCIONALIDADE) ── */
+function renderModal(){
+    const mount=document.getElementById("modalMount");
+    const m=state.providerModal;
+    if(!m){mount.innerHTML="";return;}
+
+
+    let bodyHtml="";
+    if(m.loading){
+      bodyHtml='<div class="modal-loading"><div class="spin"></div><span>A pesquisar em todos os providers...</span></div>';
+    } else if(m.error){
+      bodyHtml='<div class="modal-empty">❌ '+esc(m.error)+'</div>';
+    } else {
+      const srcs=Object.keys(m.grouped||{});
+      if(srcs.length===0){
+        bodyHtml='<div class="modal-empty">Nenhum provider encontrou este título.</div>';
+      } else {
+        bodyHtml=srcs.map(src=>{
+          const d=m.grouped[src];
+          const colorClass=srcColorClass(src);
+          const itemsHtml=d.items.map(item=>{
+            const zero=item.chapters===0;
+            const latest=item.latestChapter?"cap "+esc(String(item.latestChapter)):"";
+            return '<div class="src-item">'+
+              '<div class="src-item-title">'+esc(item.title)+'</div>'+
+              (latest?'<div class="src-item-latest">Último: '+latest+'</div>':'')+
+              '<div class="src-item-badge'+(zero?" zero":"")+'">'+item.chapters+' cap'+(item.chapters===1?"":"s")+'</div>'+
+            '</div>';
+          }).join("");
+          return '<div class="src-block">'+
+            '<div class="src-header">'+
+              '<div class="src-dot '+colorClass+'"></div>'+
+              '<div class="src-name">'+esc(d.label)+'</div>'+
+              '<div class="src-count">'+d.items.length+(d.items.length===1?" resultado":" resultados")+'</div>'+
+            '</div>'+
+            '<div class="src-items">'+itemsHtml+'</div>';
+        }).join("");
+      }
+    }
+
+    mount.innerHTML=
+      '<div class="modal-overlay" id="modalOverlay">'+
+        '<div class="modal-box">'+
+          '<div class="modal-head">'+
+            '<button class="modal-close" id="modalCloseX">✕</button>'+
+            '<div class="modal-eyebrow">Providers disponíveis</div>'+
+            '<div class="modal-manga-title">'+esc(m.title)+'</div>'+
+          '</div>'+
+          '<div class="modal-body">'+bodyHtml+'</div>'+
+          '<div class="modal-foot">'+
+            '<button id="modalFootClose" class="btn btn-primary" style="width:100%;">Fechar</button>'+
+          '</div>'+
+        '</div >'+
+      '</div>';
+
+    document.getElementById("modalCloseX").addEventListener("click",closeModal);
+    document.getElementById("modalFootClose").addEventListener("click",closeModal);
+    document.getElementById("modalOverlay").addEventListener("click",e=>{if(e.target===e.currentTarget)closeModal();});
+}
+
+
+/* ── LIBRARY RENDER (MANTIDO COMO ESTÁ PARA FUNCIONALIDADE) ── */
+function renderLibrary(){
+  let html='<div style="padding:20px;">';
+  html+='<div class="lib-header">';
+  html+='<input id="libUserInput" class="lib-input" placeholder="Nome de utilizador AniList" value="'+esc(state.libraryUser)+'" />';
+  html+='<button id="loadLibBtn" class="btn btn-primary">Carregar</button>';
+  html+='<button id="backBtn" class="btn">← Pesquisa</button>';
+  html+='</div>';
+
+
+  if(state.loading){
+    html+='<div class="loading-grid">'+Array.from({length:6}).map(()=>'<div class="skeleton"></div>').join("")+'</div>';
+  } else if(state.libraryData.length>0){
+    html+='<div class="grid">';
+    state.libraryData.forEach(item=>{
+      const pct=(item.chapters&&item.chapters>0)?Math.min(100,Math.round((item.progress/item.chapters)*100)):0;
+      const chText=item.chapters?String(item.chapters):"?";
+      const coverHtml=item.image?'<img class="cover" src="'+esc(item.image)+'" alt="'+esc(item.title)+'" />':'<div class="fallback">Sem capa</div>';
+      html+='<div class="card">'+coverHtml+
+        '<div class="info"><div>'+
+          '<div class="card-title">'+esc(item.title)+'</div>'+
+          '<div class="stats">'+
+            '<div class="chip src">AniList</div>'+
+            '<div class="chip">'+esc(String(item.progress))+' / '+esc(chText)+' caps</div>'+
+          '</div>'+
+          '<div class="progress-wrap">'+
+            '<div class="progress-label"><span>Progresso</span><span>'+pct+'%</span></div>'+
+            '<div class="progress-bar"><div class="progress-fill" style="width:'+pct+'%"></div></div>'+
+          '</div>'+
+        '</div>'+
+        '<button class="provider-btn" data-title="'+esc(item.title)+'">🔍 Ver Providers</button>'+
+      '</div></div>';
+    });
+    html+='</div>';
+  } else {
+    html+='<div class="empty"><div class="empty-box">'+
+      '<img class="empty-logo" src="'+esc(BRAND_ICON)+'" alt="PT Scans" />'+
+      '<div style="font-size:18px;font-weight:800;color:#f4f8ff;margin-bottom:8px;">Biblioteca AniList</div>'+
+      '<div style="font-size:13px;line-height:1.6;color:#9db1d3;">Insere o teu utilizador AniList para carregar a lista de leitura.</div>'+
+    '</div></div>';
+  }
+  html+='</div>';
+  return html;
+}
+
+function attachLibraryEvents(){
+  const loadBtn=document.getElementById("loadLibBtn");
+  const backBtn=document.getElementById("backBtn");
+  if(loadBtn){
+    loadBtn.addEventListener("click",()=>{
+      const inp=document.getElementById("libUserInput");
+      const user=inp?inp.value.trim():"";
+      if(!user){state.status="Insere um nome de utilizador";render();return;}
+      state.libraryUser=user;
+      window.webview.send("fetchAniList",user);
+    });
+  }
+  if(backBtn) backBtn.addEventListener("click",()=>window.webview.send("setMode","search"));
+  document.querySelectorAll(".provider-btn").forEach(btn=>
+    btn.addEventListener("click",()=>openProviderModal(btn.dataset.title))
+  );
+}
+
+
+/* ── MAIN RENDER (Funções de renderização e evento) ── */
+function renderSkeletons(){ return '<div class="loading-grid">'+Array.from({length:6}).map(()=>'<div class="skeleton"></div>').join("")+'</div>'; }
+
+function render(){
+  const app=document.getElementById("app");
+  const statusText=document.getElementById("statusText");
+  const resultMeta=document.getElementById("resultMeta");
+  const input=document.getElementById("query");
+
+
+  statusText.textContent=state.status||"Pronto";
+  if(document.activeElement!==input) input.value=state.query||"";
+
+  if(state.mode==="library"){
+    resultMeta.textContent=state.libraryData.length+" mangas";
+    renderFilters([]);
+    app.innerHTML=renderLibrary();
+    attachLibraryEvents();
+    return;
+  }
+
+
+  const all=safeArray(state.results);
+  const filtered=state.sourceFilter==="all"?all:all.filter(i=>getItemSource(i)===state.sourceFilter);
+  resultMeta.textContent=filtered.length+" resultados";
+  renderFilters(all);
+
+  if(state.loading&&all.length===0){app.innerHTML=renderSkeletons();return;}
+
+
+  if(filtered.length===0){
+    app.innerHTML='<div class="empty"><div class="empty-box">'+
+      '<img class="empty-logo" src="'+esc(BRAND_ICON)+'" alt="PT Scans" />'+
+      '<div style="font-size:18px;font-weight:800;color:#f4f8ff;margin-bottom:8px;">PT Scans</div>'+
+      '<div style="font-size:13px;line-height:1.6;color:#9db1d3;">'+(all.length===0?"Pesquisa um título para começar.":"Sem resultados para este filtro.")+'</div>'+
+    '</div></div>';
+    return;
+  }
+
+
+  app.innerHTML='<div class="grid">'+filtered.map(item=>{
+    const cover=item.image?'<img class="cover" src="'+esc(item.image)+'" alt="'+esc(item.title)+'" />':'<div class="fallback">Sem capa</div>';
+    return '<div class="card">'+cover+
+      '<div class="info"><div>'+
+        '<div class="card-title">'+esc(item.title)+'</div>'+
+        '<div class="stats">'+
+          '<div class="chip src">'+esc(item.source||getItemSource(item))+'</div>'+
+          '<div class="chip '+(item.hasChapters?"ok":"no")+'">'+(item.hasChapters?"✓ Com caps":"✗ Sem caps")+'</div>'+
+          '<div class="chip">Total: '+esc(item.chapterCount)+'</div>'+
+          '<div class="chip">Último: '+esc(item.latestChapter||"—")+'</div>'+
+          (item.year?'<div class="chip">'+esc(item.year)+'</div>':'')+
+        '</div>'+
+      '</div>'+
+      '<div class="sub">'+esc(item.id||"")+'</div>'+
+    '</div></div>';
+  }).join("")+'</div>';
+}
+
+/* topbar */
+function attachTopbarEvents(){
+  document.getElementById("searchBtn").addEventListener("click",()=>window.webview.send("search",document.getElementById("query").value));
+  document.getElementById("query").addEventListener("keydown",e=>{if(e.key==="Enter")window.webview.send("search",e.target.value);});
+  document.getElementById("clearBtn").addEventListener("click",()=>{document.getElementById("query").value="";state.sourceFilter="all";window.webview.send("clear");});
+  document.getElementById("closeBtn").addEventListener("click",()=>window.webview.send("hide"));
+  document.getElementById("reloadBtn").addEventListener("click",()=>window.webview.send("reloadProvider"));
+  document.getElementById("libraryBtn").addEventListener("click",()=>window.webview.send("setMode","library"));
+}
+
+
+/* canal webview (EVENT HANDLERS) */
+window.webview.on("results",      v=>{state.results=v||[];render();});
+window.webview.on("status",       v=>{state.status=v||"Pronto";render();});
+window.webview.on("loading",      v=>{state.loading=!!v;render();});
+window.webview.on("query",        v=>{state.query=v||"";render();});
+window.webview.on("mode",         v=>{state.mode=v;render();});
+window.webview.on("libraryData",  v=>{state.libraryData=v||[];render();});
+window.webview.on("providerModal", v=>{
+  if(v!==null&&state.providerModal!==null){state.providerModal=v;renderModal();}
+  else if(v===null){state.providerModal=null;renderModal();}
+});
+
+attachTopbarEvents();
+render();
+  </script>
+</html>
+`);
+
+  }); // end $ui.register
+} // end init
